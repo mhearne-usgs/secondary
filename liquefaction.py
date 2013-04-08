@@ -32,6 +32,7 @@ from losspager.io.grid import Grid
 from losspager.io.gmt import GMTGrid
 from losspager.io.shapefile import PagerShapeFile
 from losspager.util.text import decToRoman,roundToNearest,ceilToNearest,floorToNearest,commify
+from losspager.map import poly
 
 CONFIGFILE = 'config.ini'
 LQCOEFF = ['b0','bpga','bcti','bvs30']
@@ -228,7 +229,7 @@ def makeLandslideMap(topogrid,lsgrid,title=None,eventid=None,roads=None,mode='la
   
         
 def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=False,
-               roads=None,shapedict=None,title=None,legdict=None,eventfolder=None):
+               roads=None,borderfile=None,shapedict=None,title=None,legdict=None,eventfolder=None):
     bounds = topogrid.getRange()
     xmin,xmax,ymin,ymax = bounds
     cx = xmin + (xmax-xmin)/2.0
@@ -322,6 +323,14 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     for shape in allshapes:
         pyplot.plot(shape['x'],shape['y'],color=water_color,lw=1)
     pyplot.axis(axlimits)
+
+    #draw the country borders
+    if borderfile is not None:
+        bordercolor = 'g'
+        bordershape = PagerShapeFile(borderfile)
+        shapes = bordershape.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
+        for shape in shapes:
+            pyplot.plot(shape['x'],shape['y'],color=bordercolor,lw=1)
     
     #load the coastlines shapefile - just get the shapes that are in this extent
     shpobj  = PagerShapeFile(coastshapefile)
@@ -331,13 +340,32 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         pyplot.plot(shape['x'],shape['y'],color=coastcolor,lw=1)
     pyplot.axis(axlimits)
 
+    #get the polygon (if any) for a shapefile called "boundary"
+    bx = None
+    by = None
+    for shapename,shapeinfo in shapedict.iteritems():
+        if shapename.find('boundary') > -1:
+            fname = shapeinfo['filename']
+            psf = PagerShapeFile(fname)
+            boundshape = psf.getShape(0)
+            bx = boundshape['x']
+            by = boundshape['y']
+    
     #optionally draw the road networks
     if roads is not None:
         roadcolor = '#6E6E6E'
         psf = PagerShapeFile(roads)
         shapes = psf.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
+        if bx is not None:
+            pp = poly.PagerPolygon(bx,by)
         for shape in shapes:
-            pyplot.plot(shape['x'],shape['y'],color=roadcolor)
+            if bx is not None:
+                sx = shape['x']
+                sy = shape['y']
+                outside = numpy.logical_not(pp.containsPoints(sx,sy))
+                sx = sx[outside]
+                sy = sy[outside]
+            pyplot.plot(sx,sy,color=roadcolor)
 
     #draw the arbitary shapefiles the user may have specified in the config file
     for shapename,shapeinfo in shapedict.iteritems():
@@ -1022,6 +1050,7 @@ if __name__ == '__main__':
 
     coastshapefile = config.get('LAYERS','coasts')
     riverfolder = config.get('LAYERS','riverfolder')
+    borderfile = config.get('LAYERS','borders')
         
     try:
         vs30grid = ShakeGrid(shakefile,variable='SVEL')
@@ -1091,7 +1120,7 @@ if __name__ == '__main__':
         os.makedirs(eventfolder)
     makeMatMap(topogrid,liqmap,lsmap,coastshapefile,riverfolder,
                isScenario=isScenario,roads=roadshapefile,
-               shapedict=shapesdict,title=title,
+               shapedict=shapesdict,title=title,borderfile=borderfile,
                legdict=legdict,eventfolder=eventfolder)
     liqimage = saveTiff(liqmap,os.path.join(eventfolder,'liquefaction.tif'),isFloat=True)
     lsimage = saveTiff(lsmap,os.path.join(eventfolder,'landslide.tif'),isFloat=True)
