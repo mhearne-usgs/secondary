@@ -229,7 +229,8 @@ def makeLandslideMap(topogrid,lsgrid,title=None,eventid=None,roads=None,mode='la
   
         
 def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=False,
-               roads=None,borderfile=None,shapedict=None,title=None,legdict=None,eventfolder=None):
+               roads=None,borderfile=None,shapedict=None,title=None,legdict=None,
+               epicenter=None,eventfolder=None):
     bounds = topogrid.getRange()
     xmin,xmax,ymin,ymax = bounds
     cx = xmin + (xmax-xmin)/2.0
@@ -237,6 +238,9 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     figx = 11
     figy = 8.5
     fig = pyplot.figure(figsize=(figx,figy))
+    rect = fig.patch
+    rect.set_facecolor((1,1,1,1))
+    
     axleft = 0.27
     axbottom = 0.21
     axwidth = 0.45
@@ -324,13 +328,18 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         pyplot.plot(shape['x'],shape['y'],color=water_color,lw=1)
     pyplot.axis(axlimits)
 
+    #draw the epicenter as a black star
+    if epicenter is not None:
+        elat,elon = epicenter
+        pyplot.plot(elon,elat,'*',markeredgecolor='k',mfc='None',mew=1.5,ms=24)
+
     #draw the country borders
     if borderfile is not None:
-        bordercolor = 'g'
+        bordercolor = '#00FF00'
         bordershape = PagerShapeFile(borderfile)
         shapes = bordershape.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
         for shape in shapes:
-            pyplot.plot(shape['x'],shape['y'],color=bordercolor,lw=1)
+            pyplot.plot(shape['x'],shape['y'],color=bordercolor,lw=1.5)
     
     #load the coastlines shapefile - just get the shapes that are in this extent
     shpobj  = PagerShapeFile(coastshapefile)
@@ -559,7 +568,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     else:
         outfile = os.path.join(eventfolder,'secondary_hazards.pdf')
         
-    pyplot.savefig(outfile)
+    pyplot.savefig(outfile,facecolor=fig.get_facecolor())
     return outfile
     
     
@@ -1092,6 +1101,8 @@ if __name__ == '__main__':
     
     shakeheader = pgagrid.getAttributes()
     mag = shakeheader['event']['magnitude']
+    lat = shakeheader['event']['lat']
+    lon = shakeheader['event']['lon']
     timestr = shakeheader['event']['event_timestamp'].strftime('%b %d %Y')
     location = shakeheader['event']['event_description']
     eventid = shakeheader['shakemap_grid']['shakemap_originator'] + shakeheader['shakemap_grid']['shakemap_id']
@@ -1121,7 +1132,7 @@ if __name__ == '__main__':
     makeMatMap(topogrid,liqmap,lsmap,coastshapefile,riverfolder,
                isScenario=isScenario,roads=roadshapefile,
                shapedict=shapesdict,title=title,borderfile=borderfile,
-               legdict=legdict,eventfolder=eventfolder)
+               legdict=legdict,eventfolder=eventfolder,epicenter=(lat,lon))
     liqimage = saveTiff(liqmap,os.path.join(eventfolder,'liquefaction.tif'),isFloat=True)
     lsimage = saveTiff(lsmap,os.path.join(eventfolder,'landslide.tif'),isFloat=True)
     topoimage = saveTiff(topogrid,os.path.join(eventfolder,'topography.tif'),isFloat=True)
