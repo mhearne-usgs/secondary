@@ -1,0 +1,4 @@
+#!/bin/sh
+USER=`whoami`
+export PYTHONPATH=/Users/$USER/pager/current
+/Users/$USER/secondary/liquefaction.py $@
