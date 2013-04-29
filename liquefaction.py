@@ -565,10 +565,13 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     
     if eventfolder is None:
         outfile = os.path.join(os.getcwd(),eventid+'.pdf')
+        outfilepng = os.path.join(os.getcwd(),eventid+'.png')
     else:
         outfile = os.path.join(eventfolder,'secondary_hazards.pdf')
+        outfilepng = os.path.join(eventfolder,'secondary_hazards.png')
         
     pyplot.savefig(outfile,facecolor=fig.get_facecolor())
+    pyplot.savefig(outfilepng,facecolor=fig.get_facecolor())
     return outfile
     
     
