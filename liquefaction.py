@@ -295,25 +295,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     axlimits = pyplot.axis()
     pyplot.hold(True)
 
-    #draw the liquefaction probabilities (anything above 1%) in an orange-red scale (OrRd)
-    lqdat = lqgrid.getData().copy() * 100.0
-    clear_color = [0,0,0,0.0]
-    palette = cm.autumn_r
-    i = numpy.where(lqdat < 2.0)
-    lqdat[i] = 0
-    lqdatm = numpy.ma.masked_equal(lqdat, 0)
-    palette.set_bad(clear_color,alpha=0.0)
-    probhandle = pyplot.imshow(lqdatm,cmap=palette,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=(xmin,xmax,ymin,ymax))
-
-    #draw the landslide probabilities (anything above 1%) in an orange-red scale (OrRd)
-    lsdat = lsgrid.getData().copy() * 100.0
-    clear_color = [0,0,0,0.0]
-    palette = cm.cool
-    i = numpy.where(lsdat < 2.0)
-    lsdat[i] = 0
-    lsdatm = numpy.ma.masked_equal(lsdat, 0)
-    palette.set_bad(clear_color,alpha=0.0)
-    lsprobhandle = pyplot.imshow(lsdatm,cmap=palette,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=(xmin,xmax,ymin,ymax))
+    
 
        
     #draw the rivers
@@ -388,6 +370,26 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         shapes = psf.getShapes()
         for shape in shapes:
             pyplot.plot(shape['x'],shape['y'],color=color,linewidth=lw)
+
+    #draw the liquefaction probabilities (anything above 1%) in an orange-red scale (OrRd)
+    lqdat = lqgrid.getData().copy() * 100.0
+    clear_color = [0,0,0,0.0]
+    palette = cm.autumn_r
+    i = numpy.where(lqdat < 2.0)
+    lqdat[i] = 0
+    lqdatm = numpy.ma.masked_equal(lqdat, 0)
+    palette.set_bad(clear_color,alpha=0.0)
+    probhandle = pyplot.imshow(lqdatm,cmap=palette,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=(xmin,xmax,ymin,ymax))
+
+    #draw the landslide probabilities (anything above 1%) in an orange-red scale (OrRd)
+    lsdat = lsgrid.getData().copy() * 100.0
+    clear_color = [0,0,0,0.0]
+    palette = cm.cool
+    i = numpy.where(lsdat < 2.0)
+    lsdat[i] = 0
+    lsdatm = numpy.ma.masked_equal(lsdat, 0)
+    palette.set_bad(clear_color,alpha=0.0)
+    lsprobhandle = pyplot.imshow(lsdatm,cmap=palette,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=(xmin,xmax,ymin,ymax))
             
     #get the meridians we want to see
     meridians = getMapLines(bounds[0],bounds[1])
