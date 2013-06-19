@@ -295,9 +295,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     axlimits = pyplot.axis()
     pyplot.hold(True)
 
-    
-
-       
+    print 'Drawing rivers...'
     #draw the rivers
     #first, find the shapefile that has the rivers for our map in it!
     allshapes = []
@@ -315,6 +313,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         elat,elon = epicenter
         pyplot.plot(elon,elat,'*',markeredgecolor='k',mfc='None',mew=1.5,ms=24)
 
+    print 'Drawing borders...'
     #draw the country borders
     if borderfile is not None:
         bordercolor = '#00FF00'
@@ -322,7 +321,8 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         shapes = bordershape.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
         for shape in shapes:
             pyplot.plot(shape['x'],shape['y'],color=bordercolor,lw=1.5)
-    
+
+    print 'Drawing coastlines...'
     #load the coastlines shapefile - just get the shapes that are in this extent
     shpobj  = PagerShapeFile(coastshapefile)
     shapes = shpobj.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
@@ -341,7 +341,8 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
             boundshape = psf.getShape(0)
             bx = boundshape['x']
             by = boundshape['y']
-    
+
+    print 'Drawing roads...'
     #optionally draw the road networks
     if roads is not None:
         roadcolor = '#6E6E6E'
@@ -349,6 +350,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         shapes = psf.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
         if bx is not None:
             pp = poly.PagerPolygon(bx,by)
+        print 'Found %i road segments...' % len(shapes)
         for shape in shapes:
             sx = shape['x']
             sy = shape['y']
@@ -371,6 +373,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         for shape in shapes:
             pyplot.plot(shape['x'],shape['y'],color=color,linewidth=lw)
 
+    print 'Rendering liquefaction...'
     #draw the liquefaction probabilities (anything above 1%) in an orange-red scale (OrRd)
     lqdat = lqgrid.getData().copy() * 100.0
     clear_color = [0,0,0,0.0]
@@ -381,6 +384,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     palette.set_bad(clear_color,alpha=0.0)
     probhandle = pyplot.imshow(lqdatm,cmap=palette,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=(xmin,xmax,ymin,ymax))
 
+    print 'Rendering landslide...'
     #draw the landslide probabilities (anything above 1%) in an orange-red scale (OrRd)
     lsdat = lsgrid.getData().copy() * 100.0
     clear_color = [0,0,0,0.0]
