@@ -350,9 +350,9 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         if bx is not None:
             pp = poly.PagerPolygon(bx,by)
         for shape in shapes:
+            sx = shape['x']
+            sy = shape['y']
             if bx is not None:
-                sx = shape['x']
-                sy = shape['y']
                 outside = numpy.logical_not(pp.containsPoints(sx,sy))
                 sx = sx[outside]
                 sy = sy[outside]
