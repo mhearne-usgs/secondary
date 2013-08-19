@@ -26,13 +26,13 @@ import osr
 from pylab import find
 
 #local imports
-from losspager.io.esri import EsriGrid
-from losspager.io.shake import ShakeGrid
-from losspager.io.grid import Grid
-from losspager.io.gmt import GMTGrid
-from losspager.io.shapefile import PagerShapeFile
-from losspager.util.text import decToRoman,roundToNearest,ceilToNearest,floorToNearest,commify
-from losspager.map import poly
+from pagerio.esri import EsriGrid
+from pagerio.shake import ShakeGrid
+from pagerio.grid import Grid
+from pagerio.gmt import GMTGrid
+from pagerio.shapefile import PagerShapeFile
+from pagerutil.text import decToRoman,roundToNearest,ceilToNearest,floorToNearest,commify
+from pagermap import poly
 
 CONFIGFILE = 'config.ini'
 LQCOEFF = ['b0','bpga','bcti','bvs30']
@@ -237,14 +237,17 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     cy = ymin + (ymax-ymin)/2.0
     figx = 11
     figy = 8.5
-    fig = pyplot.figure(figsize=(figx,figy))
+    fig = pyplot.figure(figsize=(figx,figy),dpi=100)
     rect = fig.patch
     rect.set_facecolor((1,1,1,1))
     
-    axleft = 0.27
-    axbottom = 0.21
-    axwidth = 0.45
-    axheight = 0.59
+    axleft = 0.18
+    axbottom = 0.30
+    axwidth = 0.64
+    #let's try holding axes width constant, adjusting height by aspect ratio of data
+    aspect = (xmax-xmin)/(ymax-ymin)
+    axheight = axwidth/aspect
+    #axheight = 0.59
     ax = fig.add_axes([axleft,axbottom,axwidth,axheight])
     #keep the same resolution in the mapped data
     topodict = topogrid.getGeoDict()
@@ -436,14 +439,18 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     lrx_pixels,lry_pixels = ax.transData.transform((xmax,ymin))
 
     #establish how far (in inches) we want all of the elements to be
-    landslide_title_x_offset = 1.125 #to the left of the map
+    landslide_title_x_offset = 1.5 #to the left of the map
     landslide_title_y_offset = 0.15 #above the map
     liquefaction_title_x_offset = 0.375 #to the right of the map
     liquefaction_title_y_offset = 0.15 #to the right of the map
     liquefaction_ticks_x_offset = 0.795 #all colorbar annotation on the right side of the map
-    landslide_annotation_x_offset = 0.825 #all colorbar annotation on the left side of the map
-    landslide_colorbar_axis_x_offset = 0.75 #how far is the landslide colorbar axis to the left of the map
-    liquefaction_colorbar_axis_x_offset = 0.5 #how far is the liquefaction colorbar axis to the right of the map
+    landslide_annotation_x_offset = 0.95 #all colorbar annotation on the left side of the map
+
+    #CONFESSION: I don't understand why these x offsets have to be negative now - coordinates 
+    #queried during debugging do NOT match those of resulting image.
+    landslide_colorbar_axis_x_offset = -0.125 #how far is the landslide colorbar axis to the left of the map
+    liquefaction_colorbar_axis_x_offset = -0.5 #how far is the liquefaction colorbar axis to the right of the map
+
     landslide_colorbar_tick_width = 0.0625 #how wide should the tick marks on the landslide colorbar be?
     colorbar_width = 0.25 #how wide should the colorbar be?
 
@@ -473,7 +480,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     yrange = ymax - ymin
     xrange = xmax - xmin
     cticks = [2.0,5.0,10.0,15.0,20.0]
-    ctickfrac = (numpy.array(cticks) - 2)/(max(cticks) - 2)
+    ctickfrac = (numpy.array(cticks) - 2)/(max(cticks) - 2) #where to draw on colorbar in colorbar y coordinates
     places = numpy.diff(ctickfrac)/2.0 + ctickfrac[0:-1]
     yplaces = places * yrange + ymin
     px = urx_pixels + (liquefaction_ticks_x_offset * fig.dpi)
@@ -500,7 +507,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     #draw the landslide colorbar
     px = llx_pixels - (landslide_colorbar_axis_x_offset * fig.dpi)
     axisleft,axisbottom = fig.transFigure.inverted().transform((px,lly_pixels)) #now in figure unit space
-    
+
     cax1 = fig.add_axes([axisleft,axisbottom,colorbar_width_figure,colorbar_height_figure])
     cb1 = pyplot.colorbar(mappable=lsprobhandle,cax=cax1,ticks=[])
 
@@ -1082,8 +1089,8 @@ if __name__ == '__main__':
         bounds = pgagrid.getRange()
 
     bigbounds = (bounds[0]-1.0,bounds[1]+1.0,bounds[2]-1.0,bounds[3]+1.0)
-    ctigrid = EsriGrid(ctifile)
-    ctigrid.load(bounds=bounds)
+    littlebounds = (bounds[0]+0.2,bounds[1]-0.2,bounds[2]+0.2,bounds[3]-0.2)
+    ctigrid = GMTGrid(ctifile,bounds=littlebounds)
     topogrid = EsriGrid(topofile)
     topogrid.load(bounds=bigbounds)
     slopegrid = EsriGrid(slopefile)
