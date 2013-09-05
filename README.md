@@ -13,8 +13,8 @@ b0 = 23.21
 bpga = 1.990
 bcti = 0.113
 bvs30 = -4.609
-ctifile = /Users/mhearne/data/cti2/globalcti.grd
-topofile = /Users/mhearne/data/etopo/etopo1_bed_g_f4.flt
+ctifile = <DATAHOME>/cti2/globalcti.grd
+topofile = <DATAHOME>/etopo/etopo1_bed_g_f4.flt
 slopemax = 5.0
 
 [LANDSLIDE]
@@ -26,9 +26,9 @@ bpgaslope = 1.45E-05
 bcti = 1.0
 bmaxslope = 1.0
 bfriction = 1.0
-frictionfile = /Users/mhearne/data/godt/geology/friction.flt
-cohesionfile = /Users/mhearne/data/godt/geology/cohesion_10i.flt
-slopefile = /Users/mhearne/data/godt/slope/slope_50.flt
-maxslopefile = /Users/mhearne/data/godt/slope/slope_50.flt
+frictionfile = <DATAHOME>/godt/geology/friction.flt
+cohesionfile = <DATAHOME>/godt/geology/cohesion_10i.flt
+slopefile = <DATAHOME>/godt/slope/slope_50.flt
+maxslopefile = <DATAHOME>/godt/slope/slope_50.flt
 slopemin = 5.0
 </pre>
