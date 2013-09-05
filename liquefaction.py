@@ -444,12 +444,12 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     liquefaction_title_x_offset = 0.375 #to the right of the map
     liquefaction_title_y_offset = 0.15 #to the right of the map
     liquefaction_ticks_x_offset = 0.795 #all colorbar annotation on the right side of the map
-    landslide_annotation_x_offset = 0.95 #all colorbar annotation on the left side of the map
+    landslide_annotation_x_offset = 1.1 #all colorbar annotation on the left side of the map
 
     #CONFESSION: I don't understand why these x offsets have to be negative now - coordinates 
     #queried during debugging do NOT match those of resulting image.
-    landslide_colorbar_axis_x_offset = -0.125 #how far is the landslide colorbar axis to the left of the map
-    liquefaction_colorbar_axis_x_offset = -0.5 #how far is the liquefaction colorbar axis to the right of the map
+    landslide_colorbar_axis_x_offset = -0.05 #how far is the landslide colorbar axis to the left of the map
+    liquefaction_colorbar_axis_x_offset = -0.50 #how far is the liquefaction colorbar axis to the right of the map
 
     landslide_colorbar_tick_width = 0.0625 #how wide should the tick marks on the landslide colorbar be?
     colorbar_width = 0.25 #how wide should the colorbar be?
@@ -1012,6 +1012,8 @@ if __name__ == '__main__':
                       action="store_true",default=False,help="Draw roads found inside map")
     parser.add_option("-t","--table", dest="drawTable",
                       action="store_true",default=False,help="Add table of summary statistics to figure")
+    parser.add_option("-d","--disable-scenario", dest="disableScenario",
+                      action="store_true",default=False,help="Turn scenario text off")
     # parser.add_option("-q", "--quiet",
     #                   action="store_false", dest="verbose", default=True,
     #                   help="don't print status messages to stdout")
@@ -1032,6 +1034,8 @@ if __name__ == '__main__':
     ymax = None
     pgagrid = ShakeGrid(shakefile,variable='PGA')
     isScenario = pgagrid.getAttributes()['shakemap_grid']['shakemap_event_type'].lower() == 'scenario'
+    if options.disableScenario:
+        isScenario = False
     if options.zoomCoordinates is not None:
         boundstr = options.zoomCoordinates
         bparts = boundstr.split()
