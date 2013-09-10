@@ -345,20 +345,23 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
             bx = boundshape['x']
             by = boundshape['y']
 
-    print 'Drawing roads...'
+    
     #optionally draw the road networks
     if roads is not None:
+        print 'Drawing roads...'
         roadcolor = '#6E6E6E'
         psf = PagerShapeFile(roads)
+        if not psf.hasIndex:
+            psf.createShapeIndex()
         shapes = psf.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
         if bx is not None:
-            pp = poly.PagerPolygon(bx,by)
+            ppoly = poly.PagerPolygon(bx,by)
         print 'Found %i road segments...' % len(shapes)
         for shape in shapes:
             sx = shape['x']
             sy = shape['y']
             if bx is not None:
-                outside = numpy.logical_not(pp.containsPoints(sx,sy))
+                outside = numpy.logical_not(ppoly.containsPoints(sx,sy))
                 sx = sx[outside]
                 sy = sy[outside]
             pyplot.plot(sx,sy,color=roadcolor)
@@ -1143,6 +1146,8 @@ if __name__ == '__main__':
         legdict = None
     #need to add arbitrary shapefile drawing into this somehow
     shapesdict = getShapes(config)
+    if not len(shapesdict):
+        shapesdict = None
     lqtitle = 'M%.1f %s\n %s - Liquefaction Probability' % (mag,timestr,location)
     lstitle = 'M%.1f %s\n %s - Landslide Probability' % (mag,timestr,location)
     outroot = config.get('OUTPUT','folder')
