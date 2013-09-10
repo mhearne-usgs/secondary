@@ -335,15 +335,16 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     pyplot.axis(axlimits)
 
     #get the polygon (if any) for a shapefile called "boundary"
-    bx = None
-    by = None
-    for shapename,shapeinfo in shapedict.iteritems():
-        if shapename.find('boundary') > -1:
-            fname = shapeinfo['filename']
-            psf = PagerShapeFile(fname)
-            boundshape = psf.getShape(0)
-            bx = boundshape['x']
-            by = boundshape['y']
+    if shapedict is not None:
+        bx = None
+        by = None
+        for shapename,shapeinfo in shapedict.iteritems():
+            if shapename.find('boundary') > -1:
+                fname = shapeinfo['filename']
+                psf = PagerShapeFile(fname)
+                boundshape = psf.getShape(0)
+                bx = boundshape['x']
+                by = boundshape['y']
 
     
     #optionally draw the road networks
@@ -367,17 +368,18 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
             pyplot.plot(sx,sy,color=roadcolor)
 
     #draw the arbitary shapefiles the user may have specified in the config file
-    for shapename,shapeinfo in shapedict.iteritems():
-        fname = shapeinfo['filename']
-        color = shapeinfo['color']
-        if shapeinfo.has_key('linewidth'):
-            lw = shapeinfo['linewidth']
-        else:
-            lw = 1
-        psf = PagerShapeFile(fname)
-        shapes = psf.getShapes()
-        for shape in shapes:
-            pyplot.plot(shape['x'],shape['y'],color=color,linewidth=lw)
+    if shapedict is not None:
+        for shapename,shapeinfo in shapedict.iteritems():
+            fname = shapeinfo['filename']
+            color = shapeinfo['color']
+            if shapeinfo.has_key('linewidth'):
+                lw = shapeinfo['linewidth']
+            else:
+                lw = 1
+            psf = PagerShapeFile(fname)
+            shapes = psf.getShapes()
+            for shape in shapes:
+                pyplot.plot(shape['x'],shape['y'],color=color,linewidth=lw)
 
     print 'Rendering liquefaction...'
     #draw the liquefaction probabilities (anything above 1%) in an orange-red scale (OrRd)
