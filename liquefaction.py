@@ -444,17 +444,17 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     lrx_pixels,lry_pixels = ax.transData.transform((xmax,ymin))
 
     #establish how far (in inches) we want all of the elements to be
-    landslide_title_x_offset = 1.5 #to the left of the map
+    landslide_title_x_offset = 1.1 #to the left of the map
     landslide_title_y_offset = 0.15 #above the map
     liquefaction_title_x_offset = 0.375 #to the right of the map
     liquefaction_title_y_offset = 0.15 #to the right of the map
     liquefaction_ticks_x_offset = 0.795 #all colorbar annotation on the right side of the map
-    landslide_annotation_x_offset = 1.1 #all colorbar annotation on the left side of the map
+    landslide_annotation_x_offset = 0.9 #all colorbar annotation on the left side of the map
 
     #CONFESSION: I don't understand why these x offsets have to be negative now - coordinates 
     #queried during debugging do NOT match those of resulting image.
-    landslide_colorbar_axis_x_offset = -0.05 #how far is the landslide colorbar axis to the left of the map
-    liquefaction_colorbar_axis_x_offset = -0.50 #how far is the liquefaction colorbar axis to the right of the map
+    landslide_colorbar_axis_x_offset = 0.8 #how far is the landslide colorbar axis to the left of the map
+    liquefaction_colorbar_axis_x_offset = 0.50 #how far is the liquefaction colorbar axis to the right of the map
 
     landslide_colorbar_tick_width = 0.0625 #how wide should the tick marks on the landslide colorbar be?
     colorbar_width = 0.25 #how wide should the colorbar be?
@@ -579,7 +579,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         pyplot.title(title)
     
     if isScenario:
-        pyplot.text(cx,cy,'SCENARIO',rotation=45,alpha=0.25,size=72,ha='center',va='center',color='red')
+        pyplot.text(cx,cy,'SCENARIO',rotation=45,alpha=0.10,size=72,ha='center',va='center',color='red')
     
     if eventfolder is None:
         outfile = os.path.join(os.getcwd(),eventid+'.pdf')
