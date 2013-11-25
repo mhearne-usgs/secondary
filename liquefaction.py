@@ -10,6 +10,7 @@ import math
 import warnings
 from optparse import OptionParser
 import glob
+import datetime
 
 #turn off all warnings...
 warnings.filterwarnings('ignore')
@@ -39,6 +40,91 @@ LQCOEFF = ['b0','bpga','bcti','bvs30']
 LSCOEFF = ['b0','bpga','bslope','bcohesion','bpgaslope']
 DEG2M = 111191
 ALPHA = 0.7
+
+XMLHEADER = '''<?xml version="1.0" encoding="US-ASCII" standalone="yes"?>
+<secondary_grid xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" event_id="[EVENTID]" secondary_version="[VERSION]" process_timestamp="[PTIME]" secondary_originator="us" secondary_event_type="[EVENTTYPE]">
+<event event_id="[EVENTID]" magnitude="[MAG]" depth="[DEPTH]" lat="[LAT]" lon="[LON]" event_timestamp="[ETIME]" event_description="[LOCATION]" />
+<grid_specification lon_min="[XMIN]" lat_min="[YMIN]" lon_max="[XMAX]" lat_max="[YMAX]" nominal_lon_spacing="[XDIM]" nominal_lat_spacing="[YDIM]" nlon="[NX]" nlat="[NY]" />
+<grid_field index="1" name="LON" units="dd" />
+<grid_field index="2" name="LAT" units="dd" />
+<grid_field index="3" name="LIQUEFACTION" units="probability" />
+<grid_field index="4" name="LANDSLIDE" units="probability" />
+<grid_data>
+'''
+
+def saveXML(lqgrid,lsgrid,shakeheader,outfile):
+    #we need to resample one of these to the other one, since they're not on the same spacing
+    lqxmin,lqxmax,lqymin,lqymax = lqgrid.getRange()
+    lsxmin,lsxmax,lsymin,lsymax = lsgrid.getRange()
+    #is one grid inside of the other grid?
+    isLandslideSmaller = lqxmin < lsxmin and lqxmax > lsxmax and lqymin < lsymin and lqymax > lsymax
+    isLiquefactionSmaller = lsxmin < lqxmin and lsxmax > lqxmax and lsymin < lqymin and lsymax > lqymax
+    #is landslide inside liquefaction?
+    if isLandslideSmaller:
+        lqgrid.interpolateToGrid(lsgrid.geodict)
+        xmin,xmax,ymin,ymax = lsxmin,lsxmax,lsymin,lsymax
+        xdim = lsgrid.geodict['xdim']
+        ydim = lsgrid.geodict['ydim']
+    #is liquefaction inside landslide?
+    elif isLiquefactionSmaller:
+        lsgrid.interpolateToGrid(lqgrid.geodict)
+        xmin,xmax,ymin,ymax = lqxmin,lqxmax,lqymin,lqymax
+        xdim = lqgrid.geodict['xdim']
+        ydim = lqgrid.geodict['ydim']
+    else: #they're crossing each other, find the largest rectangle that's inside both
+        xmin = max(lqxmin,lsmin)
+        xmax = min(lqxmax,lsxmax)
+        ymin = max(lqymin,lsymin)
+        ymax = min(lqymax,lsymax)
+        xdim = min(lqgrid.geodict['xdim'],lsgrid.geodict['xdim'])
+        ydim = min(lqgrid.geodict['ydim'],lsgrid.geodict['ydim'])
+        mingeodict = {'xmin':xmin,'xmax':xmax,'ymin':ymin,'ymax':ymax,'xdim':xdim,'ydim':ydim}
+        lqgrid.interpolateToGrid(mingeodict)
+        lsgrid.interpolateToGrid(mingeodict)
+    nrows,ncols = lqgrid.griddata.shape
+    f = open(outfile,'wt')
+    header = XMLHEADER.replace('[EVENTID]',shakeheader['shakemap_grid']['event_id'])
+    header = header.replace('[VERSION]','1')
+    header = header.replace('[PTIME]',datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))
+    isScenario = shakeheader['shakemap_grid']['shakemap_event_type'].lower() == 'scenario'
+    if isScenario:
+        etype = 'SCENARIO'
+    else:
+        etype = 'ACTUAL'
+    header = header.replace('[EVENTTYPE]',etype)
+    header = header.replace('[MAG]','%.1f' % shakeheader['event']['magnitude'])
+    header = header.replace('[DEPTH]','%.1f' % shakeheader['event']['depth'])
+    header = header.replace('[LAT]','%.4f' % shakeheader['event']['lat'])
+    header = header.replace('[LON]','%.4f' % shakeheader['event']['lon'])
+    header = header.replace('[ETIME]',shakeheader['event']['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ'))
+    header = header.replace('[LOCATION]',shakeheader['event']['event_description'])
+    header = header.replace('[XMIN]','%.4f' % xmin)
+    header = header.replace('[XMAX]','%.4f' % xmax)
+    header = header.replace('[YMIN]','%.4f' % ymin)
+    header = header.replace('[YMAX]','%.4f' % ymax)
+    header = header.replace('[XDIM]','%.4f' % xdim)
+    header = header.replace('[YDIM]','%.4f' % ydim)
+    header = header.replace('[NX]','%.4f' % ncols)
+    header = header.replace('[NY]','%.4f' % nrows)
+    f.write(header)
+    for i in range(0,nrows):
+        for j in range(0,ncols):
+            lq = lqgrid.griddata[i,j]
+            ls = lsgrid.griddata[i,j]
+            if numpy.isnan(lq):
+                lq = 0.0
+            if numpy.isnan(ls):
+                ls = 0.0
+            if ls > 0.1 or lq > 0.1:
+                pass
+            lat,lon = lqgrid.getLatLon(i,j)
+            f.write('%.4f %.4f %.2f %.2f\n' % (lon,lat,lq,ls))
+    f.write('</grid_data>\n')
+    f.write('</secondary_grid>\n')
+    f.close()
+    return outfile
+        
+        
 
 def getShapes(config):
     sections = config.sections()
@@ -1110,6 +1196,16 @@ if __name__ == '__main__':
     topogrid.interpolateToGrid(ctigrid.getGeoDict())
     liqmap,psum,ncells,pmax,pmean = liquefy(pgagrid,vs30grid,ctigrid,slopegrid,configopts,slopemax=slopemax)
 
+    #save the pga data we used for liquefaction
+    shakeheader = pgagrid.getAttributes()
+    eventid = shakeheader['shakemap_grid']['shakemap_originator'] + shakeheader['shakemap_grid']['shakemap_id']
+    outroot = config.get('OUTPUT','folder')
+    eventfolder = os.path.join(outroot,eventid)
+    pgaimage = saveTiff(pgagrid,os.path.join(eventfolder,'pga_liquefaction.tif'),isFloat=True)
+
+    #reinstantiate our pga data - we were double re-sampling this data
+    pgagrid = ShakeGrid(shakefile,variable='PGA')
+    
     #run the landslide model
     cohesionfile = config.get('LANDSLIDE','cohesionfile')
     configopts = {}
@@ -1124,13 +1220,13 @@ if __name__ == '__main__':
     pgagrid.interpolateToGrid(slopegrid.getGeoDict())
     lsmap,lspsum,lsncells,lspmax,lspmean = slide(pgagrid,slopegrid,cohesiongrid,configopts,slopemin=slopemin)
     
-    shakeheader = pgagrid.getAttributes()
+    
     mag = shakeheader['event']['magnitude']
     lat = shakeheader['event']['lat']
     lon = shakeheader['event']['lon']
     timestr = shakeheader['event']['event_timestamp'].strftime('%b %d %Y')
     location = shakeheader['event']['event_description']
-    eventid = shakeheader['shakemap_grid']['shakemap_originator'] + shakeheader['shakemap_grid']['shakemap_id']
+    
     if isScenario:
         title = location
     else:
@@ -1152,8 +1248,8 @@ if __name__ == '__main__':
         shapesdict = None
     lqtitle = 'M%.1f %s\n %s - Liquefaction Probability' % (mag,timestr,location)
     lstitle = 'M%.1f %s\n %s - Landslide Probability' % (mag,timestr,location)
-    outroot = config.get('OUTPUT','folder')
-    eventfolder = os.path.join(outroot,eventid)
+    
+    
     if not os.path.isdir(eventfolder):
         os.makedirs(eventfolder)
     makeMatMap(topogrid,liqmap,lsmap,coastshapefile,riverfolder,
@@ -1163,11 +1259,12 @@ if __name__ == '__main__':
     liqimage = saveTiff(liqmap,os.path.join(eventfolder,'liquefaction.tif'),isFloat=True)
     lsimage = saveTiff(lsmap,os.path.join(eventfolder,'landslide.tif'),isFloat=True)
     topoimage = saveTiff(topogrid,os.path.join(eventfolder,'topography.tif'),isFloat=True)
-    pgaimage = saveTiff(pgagrid,os.path.join(eventfolder,'pga.tif'),isFloat=True)
+    pgaimage = saveTiff(pgagrid,os.path.join(eventfolder,'pga_landslide.tif'),isFloat=True)
     cohesionimage = saveTiff(cohesiongrid,os.path.join(eventfolder,'cohesion.tif'),isFloat=True)
     ctiimage = saveTiff(ctigrid,os.path.join(eventfolder,'cti.tif'),isFloat=True)
     vs30image = saveTiff(vs30grid,os.path.join(eventfolder,'vs30.tif'),isFloat=True)
     slopeimage = saveTiff(slopegrid,os.path.join(eventfolder,'slope.tif'),isFloat=True)
+    xmlfile = saveXML(liqmap,lsmap,shakeheader,os.path.join(eventfolder,'secondary_hazards.xml'))
     files = os.listdir(eventfolder)
     print '%i files saved to %s' % (len(files)-2,eventfolder)
     
