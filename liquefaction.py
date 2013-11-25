@@ -40,6 +40,8 @@ LQCOEFF = ['b0','bpga','bcti','bvs30']
 LSCOEFF = ['b0','bpga','bslope','bcohesion','bpgaslope']
 DEG2M = 111191
 ALPHA = 0.7
+MAGEXP1 = 2.56
+MAGEXP2 = 2.24
 
 XMLHEADER = '''<?xml version="1.0" encoding="US-ASCII" standalone="yes"?>
 <secondary_grid xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" event_id="[EVENTID]" secondary_version="[VERSION]" process_timestamp="[PTIME]" secondary_originator="us" secondary_event_type="[EVENTTYPE]">
@@ -1035,11 +1037,13 @@ def slide(pgagrid,slopegrid,cohesiongrid,coeff,slopemin=3.0):
     return (lsprob,psum,ncells,pmax,pmean)
     
 
-def liquefy(pgagrid,vs30grid,ctigrid,slopegrid,coeff,slopemax=3):
-    pga = numpy.log(pgagrid.griddata/100.0)
+def liquefy(pgagrid,vs30grid,ctigrid,slopegrid,mag,coeff,slopemax=3):
+    pga = pgagrid.griddata/100.0
+    pgam = pga * (numpy.power(mag,MAGEXP1)/numpy.power(10,MAGEXP2))
+    lpgam = numpy.log(pgam)
     svel = numpy.log(vs30grid.griddata)
     cti = ctigrid.griddata/100.0
-    x = coeff['b0'] + coeff['bpga']*pga + coeff['bcti']*cti + coeff['bvs30']*svel
+    x = coeff['b0'] + coeff['bpga']*lpgam + coeff['bcti']*cti + coeff['bvs30']*svel
     P = 1 / (1 + numpy.exp(-1*x))
     #slopemax = 1000.0 * numpy.tan(slopemax*(numpy.pi/180.0))
     slopemax = slopemax * 100
@@ -1183,6 +1187,9 @@ if __name__ == '__main__':
     else:
         bounds = pgagrid.getRange()
 
+    shakeheader = pgagrid.getAttributes()
+    mag = shakeheader['event']['magnitude']    
+        
     bigbounds = (bounds[0]-1.0,bounds[1]+1.0,bounds[2]-1.0,bounds[3]+1.0)
     littlebounds = (bounds[0]+0.2,bounds[1]-0.2,bounds[2]+0.2,bounds[3]-0.2)
     ctigrid = GMTGrid(ctifile,bounds=littlebounds)
@@ -1194,10 +1201,10 @@ if __name__ == '__main__':
     pgagrid.interpolateToGrid(ctigrid.getGeoDict())
     vs30grid.interpolateToGrid(ctigrid.getGeoDict())
     topogrid.interpolateToGrid(ctigrid.getGeoDict())
-    liqmap,psum,ncells,pmax,pmean = liquefy(pgagrid,vs30grid,ctigrid,slopegrid,configopts,slopemax=slopemax)
+    liqmap,psum,ncells,pmax,pmean = liquefy(pgagrid,vs30grid,ctigrid,slopegrid,mag,configopts,slopemax=slopemax)
 
     #save the pga data we used for liquefaction
-    shakeheader = pgagrid.getAttributes()
+    
     eventid = shakeheader['shakemap_grid']['shakemap_originator'] + shakeheader['shakemap_grid']['shakemap_id']
     outroot = config.get('OUTPUT','folder')
     eventfolder = os.path.join(outroot,eventid)
@@ -1221,7 +1228,6 @@ if __name__ == '__main__':
     lsmap,lspsum,lsncells,lspmax,lspmean = slide(pgagrid,slopegrid,cohesiongrid,configopts,slopemin=slopemin)
     
     
-    mag = shakeheader['event']['magnitude']
     lat = shakeheader['event']['lat']
     lon = shakeheader['event']['lon']
     timestr = shakeheader['event']['event_timestamp'].strftime('%b %d %Y')
