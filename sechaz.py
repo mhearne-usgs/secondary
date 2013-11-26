@@ -8,9 +8,10 @@ import glob
 import copy
 import math
 import warnings
-from optparse import OptionParser
+from argparse import ArgumentParser
 import glob
 import datetime
+from collections import OrderedDict
 
 #turn off all warnings...
 warnings.filterwarnings('ignore')
@@ -53,6 +54,66 @@ XMLHEADER = '''<?xml version="1.0" encoding="US-ASCII" standalone="yes"?>
 <grid_field index="4" name="LANDSLIDE" units="probability" />
 <grid_data>
 '''
+
+LIQUEFACTION_PARAMETERS = OrderedDict()
+LIQUEFACTION_PARAMETERS['b0'] = 24.10
+LIQUEFACTION_PARAMETERS['bpga'] = 2.067
+LIQUEFACTION_PARAMETERS['bcti'] = 0.355
+LIQUEFACTION_PARAMETERS['bvs30'] = -4.784
+LIQUEFACTION_PARAMETERS['slopemax'] = 5.0
+LIQUEFACTION_PARAMETERS['ctifile'] = '[HOME]/secondary/data/globalcti.grd'
+LIQUEFACTION_PARAMETERS['topofile'] = '[HOME]/secondary/data/etopo1_bed_g_f4.flt'
+
+LANDSLIDE_PARAMETERS = OrderedDict()
+LANDSLIDE_PARAMETERS['b0'] = -7.15
+LANDSLIDE_PARAMETERS['bpga'] = 6.04E-02
+LANDSLIDE_PARAMETERS['bslope'] = 8.25E-04
+LANDSLIDE_PARAMETERS['bcohesion'] = 2.01E-02
+LANDSLIDE_PARAMETERS['bpgaslope'] = 1.45E-05
+LANDSLIDE_PARAMETERS['bcti'] = 1.0
+LANDSLIDE_PARAMETERS['bmaxslope'] = 1.0
+LANDSLIDE_PARAMETERS['bfriction'] = 1.0
+LANDSLIDE_PARAMETERS['slopemin'] = 5.0
+LANDSLIDE_PARAMETERS['frictionfile'] = '[HOME]/secondary/data/friction.flt'
+LANDSLIDE_PARAMETERS['cohesionfile'] = '[HOME]/secondary/data/cohesion_10i.flt'
+LANDSLIDE_PARAMETERS['maxslopefile'] = '[HOME]/secondary/data/slope_50.flt'
+
+DEFAULT_LAYERS = {'roads':'[HOME]/secondary/data/gROADS-v1-americas.shp',
+          'coasts':'[HOME]/secondary/data/GSHHS_f_L1.shp',
+          'riverfolder':'[HOME]/secondary/data/river',
+          'borders':'[HOME]/secondary/data/WDBII_border_f_L1.shp'}
+
+DEFAULTS = {'LIQUEFACTION':LIQUEFACTION_PARAMETERS,
+    'LANDSLIDE':LANDSLIDE_PARAMETERS,
+    'LAYERS':DEFAULT_LAYERS,
+    'OUTPUT':{'folder':'[HOME]/secondary/output'},
+    }
+
+def configure(configfilename):
+    userhome = os.path.expanduser("~")
+    sections = DEFAULTS.keys()
+    config = ConfigParser.RawConfigParser()
+    print 'You will be prompted to configure the Secondary Hazards application.  Hit Enter to choose default.'
+    for section in sections:
+        print '\nSelect the %s parameters:' % section
+        config.add_section(section)
+        for key,value in DEFAULTS[section].iteritems():
+            if not isinstance(value,float):
+                value = value.replace('[HOME]',userhome)
+            resp = raw_input('Select value for %s: [%s] ' % (key,value))
+            if resp.lower().strip() == '':
+                config.set(section,key,value)
+            else:
+                config.set(section,key,resp)
+    p,f = os.path.split(configfilename)
+    if not os.path.isdir(p):
+        os.mkdir(p)
+    configfile = open(configfilename,'wt')
+    config.write(configfile)
+    configfile.close()
+    print 'Configuration parameters have been written to %s.' % configfilename
+    return configfilename
+    
 
 def saveXML(lqgrid,lsgrid,shakeheader,outfile):
     #we need to resample one of these to the other one, since they're not on the same spacing
@@ -1095,31 +1156,16 @@ def getcti(ctifolder,bounds):
                 break
     return myfile
 
-if __name__ == '__main__':
-    usage = """usage: %prog [options] grid.xml
-    Run the landslide and liquefaction models defined by coefficients found in a config.ini file.
-    Output is a pdf map with liquefaction/landslide results layered on topography."""
-    parser = OptionParser(usage=usage)
-    parser.add_option("-z", "--zoom", dest="zoomCoordinates",
-                      help='zoom in map to coordinates', 
-                      metavar='"xmin xmax ymin ymax"')
-    parser.add_option("-r","--roads", dest="drawRoads",
-                      action="store_true",default=False,help="Draw roads found inside map")
-    parser.add_option("-t","--table", dest="drawTable",
-                      action="store_true",default=False,help="Add table of summary statistics to figure")
-    parser.add_option("-d","--disable-scenario", dest="disableScenario",
-                      action="store_true",default=False,help="Turn scenario text off")
-    # parser.add_option("-q", "--quiet",
-    #                   action="store_false", dest="verbose", default=True,
-    #                   help="don't print status messages to stdout")
-    (options, args) = parser.parse_args()
-    #get input from the command line
-    if not len(args):
-        print 'Missing input shakemap grid.xml file.'
-        parser.print_help()
-        sys.exit(1)
-       
-    shakefile = args[0]
+def main(args):
+    #define location for config file
+    homedir = os.path.expanduser("~") #where is the user's home directory?
+    configfile = os.path.join(homedir,'.secondary',CONFIGFILE)
+    
+    if args.doConfigure:
+        configure(configfile)
+        sys.exit()
+    
+    shakefile = args.shakefile
     print 'Processing %s' % shakefile
 
     #get the bounds, if present
@@ -1129,15 +1175,10 @@ if __name__ == '__main__':
     ymax = None
     pgagrid = ShakeGrid(shakefile,variable='PGA')
     isScenario = pgagrid.getAttributes()['shakemap_grid']['shakemap_event_type'].lower() == 'scenario'
-    if options.disableScenario:
+    if args.disableScenario:
         isScenario = False
-    if options.zoomCoordinates is not None:
-        boundstr = options.zoomCoordinates
-        bparts = boundstr.split()
-        xmin = float(bparts[0])
-        xmax = float(bparts[1])
-        ymin = float(bparts[2])
-        ymax = float(bparts[3])
+    if args.zoomCoordinates is not None:
+        xmin,xmax,ymin,ymax = args.zoomCoordinates
         pdict = pgagrid.getGeoDict()
         pxmin = pdict['xmin']
         pxmax = pdict['xmax']
@@ -1149,8 +1190,6 @@ if __name__ == '__main__':
             sys.exit(1)
         
     #find the config file
-    homedir = os.path.dirname(os.path.abspath(__file__)) #where is this script?
-    configfile = os.path.join(homedir,CONFIGFILE)
     if not os.path.isfile(configfile):
         print 'Missing config file %s.  Exiting.' % configfile
         sys.exit(1)
@@ -1167,7 +1206,7 @@ if __name__ == '__main__':
     slopemax = float(config.get('LIQUEFACTION','slopemax'))
 
     #if the user wants to draw roads, get the name of the roads shapefile
-    if options.drawRoads:
+    if args.drawRoads:
         roadshapefile,fext = os.path.splitext(config.get('LAYERS','roads'))
     else:
         roadshapefile = None
@@ -1204,10 +1243,11 @@ if __name__ == '__main__':
     liqmap,psum,ncells,pmax,pmean = liquefy(pgagrid,vs30grid,ctigrid,slopegrid,mag,configopts,slopemax=slopemax)
 
     #save the pga data we used for liquefaction
-    
     eventid = shakeheader['shakemap_grid']['shakemap_originator'] + shakeheader['shakemap_grid']['shakemap_id']
     outroot = config.get('OUTPUT','folder')
     eventfolder = os.path.join(outroot,eventid)
+    if not os.path.isdir(eventfolder):
+        os.makedirs(eventfolder)
     pgaimage = saveTiff(pgagrid,os.path.join(eventfolder,'pga_liquefaction.tif'),isFloat=True)
 
     #reinstantiate our pga data - we were double re-sampling this data
@@ -1239,7 +1279,7 @@ if __name__ == '__main__':
         title = 'M%.1f %s\n %s' % (mag,timestr,location)
     xdim = shakeheader['grid_specification']['nominal_lon_spacing']
     ydim = shakeheader['grid_specification']['nominal_lat_spacing']
-    if options.drawTable:
+    if args.drawTable:
         legdict = {'liqsum':psum,'liqcells':ncells,
                    'liqmax':pmax,'shakexdim':xdim,
                    'shakeydim':ydim,'liqmean':pmean,
@@ -1249,15 +1289,19 @@ if __name__ == '__main__':
     else:
         legdict = None
     #need to add arbitrary shapefile drawing into this somehow
-    shapesdict = getShapes(config)
-    if not len(shapesdict):
+    if args.shapeconfig:
+        shapeconfig = ConfigParser.RawConfigParser()
+        shapeconfig.read(args.shapeconfig)
+        shapesdict = getShapes(shapeconfig)
+        if not len(shapesdict):
+            shapesdict = None
+    else:
         shapesdict = None
     lqtitle = 'M%.1f %s\n %s - Liquefaction Probability' % (mag,timestr,location)
     lstitle = 'M%.1f %s\n %s - Landslide Probability' % (mag,timestr,location)
     
     
-    if not os.path.isdir(eventfolder):
-        os.makedirs(eventfolder)
+    
     makeMatMap(topogrid,liqmap,lsmap,coastshapefile,riverfolder,
                isScenario=isScenario,roads=roadshapefile,
                shapedict=shapesdict,title=title,borderfile=borderfile,
@@ -1273,4 +1317,28 @@ if __name__ == '__main__':
     xmlfile = saveXML(liqmap,lsmap,shakeheader,os.path.join(eventfolder,'secondary_hazards.xml'))
     files = os.listdir(eventfolder)
     print '%i files saved to %s' % (len(files)-2,eventfolder)
+
+if __name__ == '__main__':
+    usage = """Run the landslide and liquefaction models defined by coefficients found in a config.ini file.
+    Output is a pdf map with liquefaction/landslide results layered on topography."""
+    parser = ArgumentParser(description=usage)
+    parser.add_argument("shakefile", metavar='GRIDFILE',nargs='?',
+                        help='ShakeMap grid.xml file')
+    parser.add_argument("-z", "--zoom", dest="zoomCoordinates",nargs=4,
+                        metavar=('xmin','xmax','ymin','ymax'),
+                        help='zoom in map to geographic coordinates (xmin xmax ymin ymax)', 
+                        type=float)
+    parser.add_argument("-r","--roads", dest="drawRoads",
+                      action="store_true",default=False,help="Draw roads found inside map")
+    parser.add_argument("-t","--table", dest="drawTable",
+                      action="store_true",default=False,help="Add table of summary statistics to figure")
+    parser.add_argument("-d","--disable-scenario", dest="disableScenario",
+                      action="store_true",default=False,help="Turn scenario text off")
+    parser.add_argument("-c","--configure", dest="doConfigure",
+                      action="store_true",default=False,help="Create config file")
+    parser.add_argument("-s","--shapeconfig", dest="shapeconfig", nargs=1,metavar='SHAPECONFIG',
+                        help="Create config file")
+    args = parser.parse_args()
+    main(args)
+    
     
