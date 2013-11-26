@@ -49,7 +49,7 @@ mkdir ~/src
 cd ~/src
 git clone https://github.com/mhearne-usgs/secondary.git
 cd secondary
-./runsec.py -c
+./sechaz.py -c
 </pre>
 
 Running the script with the -c (configuration) flag will prompt you for values for the configuration
@@ -59,7 +59,7 @@ Running SecHaz
 =========
 
 <pre>
-usage: runsec.py [-h] [-z xmin xmax ymin ymax] [-r] [-t] [-d] [-c]
+usage: sechaz.py [-h] [-z xmin xmax ymin ymax] [-r] [-t] [-d] [-c]
                  [-s SHAPECONFIG]
                  [GRIDFILE]
 
