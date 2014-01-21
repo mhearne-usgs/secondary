@@ -1288,7 +1288,7 @@ def main(args):
     saveGMT(slopegrid,os.path.join(eventfolder,'slope.grd'),fmt='f',bandname='slope')
     xmlfile = saveXML(liqmap,lsmap,shakeheader,os.path.join(eventfolder,'secondary_hazards.xml'))
     files = os.listdir(eventfolder)
-    print '%i files saved to %s' % (len(files)-2,eventfolder)
+    print '%s' % eventfolder
 
 if __name__ == '__main__':
     usage = """Run the landslide and liquefaction models defined by coefficients found in a config.ini file.
