@@ -23,18 +23,16 @@ from mpl_toolkits.basemap import Basemap, shiftgrid
 from matplotlib import cm
 from matplotlib.colors import LightSource
 from matplotlib.table import Table
-import gdal
-import osr
 from pylab import find
 
 #local imports
-from pagerio.esri import EsriGrid
-from pagerio.shake import ShakeGrid
-from pagerio.grid import Grid
-from pagerio.gmt import GMTGrid
-from pagerio.shapefile import PagerShapeFile
-from pagerutil.text import decToRoman,roundToNearest,ceilToNearest,floorToNearest,commify
-from pagermap import poly
+from neicio.esri import EsriGrid
+from neicio.shake import ShakeGrid
+from neicio.grid import Grid
+from neicio.gmt import GMTGrid
+from neicio.shapefile import PagerShapeFile
+from neicutil.text import decToRoman,roundToNearest,ceilToNearest,floorToNearest,commify
+from neicmap import poly
 
 CONFIGFILE = 'config.ini'
 LQCOEFF = ['b0','bpga','bcti','bvs30']
@@ -186,8 +184,6 @@ def saveXML(lqgrid,lsgrid,shakeheader,outfile):
     f.write('</secondary_grid>\n')
     f.close()
     return outfile
-        
-        
 
 def getShapes(config):
     sections = config.sections()
@@ -219,33 +215,11 @@ def cosd(angle):
     """
     return math.cos(angle*(math.pi/180))
 
-def saveTiff(lqgrid,fname,isFloat=False):
-    format = "GTiff"
-    driver = gdal.GetDriverByName( format )
-    metadata = driver.GetMetadata()
-    nrows,ncols = lqgrid.griddata.shape
-    if not isFloat:
-        raster = numpy.array(numpy.round(lqgrid.griddata*100),dtype=numpy.int8)
-        outdata = driver.Create(fname, ncols, nrows, 1, gdal.GDT_Byte )
-    else:
-        raster = lqgrid.griddata.astype(numpy.float32)
-        outdata = driver.Create(fname, ncols, nrows, 1, gdal.GDT_Float32 )
-    ulxmap = lqgrid.geodict['xmin']
-    ulymap = lqgrid.geodict['ymax']
-    xdim = lqgrid.geodict['xdim']
-    ydim = lqgrid.geodict['ydim']
-    outdata.SetGeoTransform([ulxmap,xdim,0,ulymap,0,-1*ydim])
-    srs = osr.SpatialReference()
-    srs.SetGeogCS( "My geographic coordinate system",
-               "WGS_1984", 
-               "My WGS84 Spheroid", 
-               osr.SRS_WGS84_SEMIMAJOR,
-               osr.SRS_WGS84_INVFLATTENING, 
-               "Greenwich", 0.0,
-        "degree", float(osr.SRS_UA_DEGREE_CONV))
-    outdata.SetProjection(srs.ExportToWkt())
-    outdata.GetRasterBand(1).WriteArray(raster)
-    outdata = None
+def saveGMT(lqgrid,fname,fmt='f',bandname=None):
+    gmtgrid = GMTGrid(fmt=fmt,bandname=bandname)
+    gmtgrid.griddata = lqgrid.griddata.copy()
+    gmtgrid.geodict = lqgrid.geodict.copy()
+    gmtgrid.save(fname)
 
 def latstr(parallel):
     if parallel < 0:
@@ -447,7 +421,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     axlimits = pyplot.axis()
     pyplot.hold(True)
 
-    print 'Drawing rivers...'
+    #print 'Drawing rivers...'
     #draw the rivers
     #first, find the shapefile that has the rivers for our map in it!
     allshapes = []
@@ -465,7 +439,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         elat,elon = epicenter
         pyplot.plot(elon,elat,'*',markeredgecolor='k',mfc='None',mew=1.5,ms=24)
 
-    print 'Drawing borders...'
+    #print 'Drawing borders...'
     #draw the country borders
     if borderfile is not None:
         bordercolor = '#00FF00'
@@ -474,7 +448,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         for shape in shapes:
             pyplot.plot(shape['x'],shape['y'],color=bordercolor,lw=1.5)
 
-    print 'Drawing coastlines...'
+    #print 'Drawing coastlines...'
     #load the coastlines shapefile - just get the shapes that are in this extent
     shpobj  = PagerShapeFile(coastshapefile)
     shapes = shpobj.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
@@ -498,7 +472,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     
     #optionally draw the road networks
     if roads is not None:
-        print 'Drawing roads...'
+        #print 'Drawing roads...'
         roadcolor = '#6E6E6E'
         psf = PagerShapeFile(roads)
         if not psf.hasIndex:
@@ -506,7 +480,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
         shapes = psf.getShapesByBoundingBox((xmin,xmax,ymin,ymax))
         if bx is not None:
             ppoly = poly.PagerPolygon(bx,by)
-        print 'Found %i road segments...' % len(shapes)
+        #print 'Found %i road segments...' % len(shapes)
         for shape in shapes:
             sx = shape['x']
             sy = shape['y']
@@ -530,7 +504,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
             for shape in shapes:
                 pyplot.plot(shape['x'],shape['y'],color=color,linewidth=lw)
 
-    print 'Rendering liquefaction...'
+    #print 'Rendering liquefaction...'
     #draw the liquefaction probabilities (anything above 1%) in an orange-red scale (OrRd)
     lqdat = lqgrid.getData().copy() * 100.0
     clear_color = [0,0,0,0.0]
@@ -541,7 +515,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     palette.set_bad(clear_color,alpha=0.0)
     probhandle = pyplot.imshow(lqdatm,cmap=palette,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=(xmin,xmax,ymin,ymax))
 
-    print 'Rendering landslide...'
+    #print 'Rendering landslide...'
     #draw the landslide probabilities (anything above 1%) in an orange-red scale (OrRd)
     lsdat = lsgrid.getData().copy() * 100.0
     clear_color = [0,0,0,0.0]
@@ -1103,7 +1077,7 @@ def liquefy(pgagrid,vs30grid,ctigrid,slopegrid,mag,coeff,slopemax=3):
     pgam = pga * (numpy.power(mag,MAGEXP1)/numpy.power(10,MAGEXP2))
     lpgam = numpy.log(pgam)
     svel = numpy.log(vs30grid.griddata)
-    cti = ctigrid.griddata/100.0
+    cti = ctigrid.griddata/100
     x = coeff['b0'] + coeff['bpga']*lpgam + coeff['bcti']*cti + coeff['bvs30']*svel
     P = 1 / (1 + numpy.exp(-1*x))
     #slopemax = 1000.0 * numpy.tan(slopemax*(numpy.pi/180.0))
@@ -1166,7 +1140,7 @@ def main(args):
         sys.exit()
     
     shakefile = args.shakefile
-    print 'Processing %s' % shakefile
+    #print 'Processing %s' % shakefile
 
     #get the bounds, if present
     xmin = None
@@ -1248,7 +1222,7 @@ def main(args):
     eventfolder = os.path.join(outroot,eventid)
     if not os.path.isdir(eventfolder):
         os.makedirs(eventfolder)
-    pgaimage = saveTiff(pgagrid,os.path.join(eventfolder,'pga_liquefaction.tif'),isFloat=True)
+    saveGMT(pgagrid,os.path.join(eventfolder,'pga_liquefaction.grd'),fmt='f',bandname='PGA')
 
     #reinstantiate our pga data - we were double re-sampling this data
     pgagrid = ShakeGrid(shakefile,variable='PGA')
@@ -1300,20 +1274,18 @@ def main(args):
     lqtitle = 'M%.1f %s\n %s - Liquefaction Probability' % (mag,timestr,location)
     lstitle = 'M%.1f %s\n %s - Landslide Probability' % (mag,timestr,location)
     
-    
-    
     makeMatMap(topogrid,liqmap,lsmap,coastshapefile,riverfolder,
                isScenario=isScenario,roads=roadshapefile,
                shapedict=shapesdict,title=title,borderfile=borderfile,
                legdict=legdict,eventfolder=eventfolder,epicenter=(lat,lon))
-    liqimage = saveTiff(liqmap,os.path.join(eventfolder,'liquefaction.tif'),isFloat=True)
-    lsimage = saveTiff(lsmap,os.path.join(eventfolder,'landslide.tif'),isFloat=True)
-    topoimage = saveTiff(topogrid,os.path.join(eventfolder,'topography.tif'),isFloat=True)
-    pgaimage = saveTiff(pgagrid,os.path.join(eventfolder,'pga_landslide.tif'),isFloat=True)
-    cohesionimage = saveTiff(cohesiongrid,os.path.join(eventfolder,'cohesion.tif'),isFloat=True)
-    ctiimage = saveTiff(ctigrid,os.path.join(eventfolder,'cti.tif'),isFloat=True)
-    vs30image = saveTiff(vs30grid,os.path.join(eventfolder,'vs30.tif'),isFloat=True)
-    slopeimage = saveTiff(slopegrid,os.path.join(eventfolder,'slope.tif'),isFloat=True)
+    saveGMT(liqmap,os.path.join(eventfolder,'liquefaction.grd'),fmt='f',bandname='liquefaction')
+    saveGMT(lsmap,os.path.join(eventfolder,'landslide.grd'),fmt='f',bandname='landslide')
+    saveGMT(topogrid,os.path.join(eventfolder,'topography.grd'),fmt='f',bandname='topography')
+    saveGMT(pgagrid,os.path.join(eventfolder,'pga_landslide.grd'),fmt='f',bandname='PGA')
+    saveGMT(cohesiongrid,os.path.join(eventfolder,'cohesion.grd'),fmt='f',bandname='cohesion')
+    saveGMT(ctigrid,os.path.join(eventfolder,'cti.grd'),fmt='f',bandname='cti')
+    saveGMT(vs30grid,os.path.join(eventfolder,'vs30.grd'),fmt='f',bandname='vs30')
+    saveGMT(slopegrid,os.path.join(eventfolder,'slope.grd'),fmt='f',bandname='slope')
     xmlfile = saveXML(liqmap,lsmap,shakeheader,os.path.join(eventfolder,'secondary_hazards.xml'))
     files = os.listdir(eventfolder)
     print '%i files saved to %s' % (len(files)-2,eventfolder)
