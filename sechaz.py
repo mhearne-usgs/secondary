@@ -33,6 +33,7 @@ from neicio.gmt import GMTGrid
 from neicio.shapefile import PagerShapeFile
 from neicutil.text import decToRoman,roundToNearest,ceilToNearest,floorToNearest,commify
 from neicmap import poly
+from neicmap import distance
 
 CONFIGFILE = 'config.ini'
 LQCOEFF = ['b0','bpga','bcti','bvs30']
@@ -41,6 +42,8 @@ DEG2M = 111191
 ALPHA = 0.7
 MAGEXP1 = 2.56
 MAGEXP2 = 2.24
+AZIMUTH_DEFAULT = 90
+DEFAULT_COHESION = 10.0
 
 XMLHEADER = '''<?xml version="1.0" encoding="US-ASCII" standalone="yes"?>
 <secondary_grid xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" event_id="[EVENTID]" secondary_version="[VERSION]" process_timestamp="[PTIME]" secondary_originator="us" secondary_event_type="[EVENTTYPE]">
@@ -281,7 +284,7 @@ def makeLandslideMap(topogrid,lsgrid,title=None,eventid=None,roads=None,mode='la
              80:0.00005156}
     mlat = abs(int(round(cy/10)*10))
     zfactor = zdict[mlat]
-    ls = LightSource(azdeg = 90, altdeg = 20)
+    ls = LightSource(azdeg = azimuth, altdeg = 20)
     #pyplot.set_cmap('bone')
     
     rgb = ls.shade(topodatm*zfactor,cmap=palette)
@@ -353,7 +356,7 @@ def makeLandslideMap(topogrid,lsgrid,title=None,eventid=None,roads=None,mode='la
         
 def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=False,
                roads=None,borderfile=None,shapedict=None,title=None,legdict=None,
-               epicenter=None,eventfolder=None):
+               epicenter=None,eventfolder=None,azimuth=AZIMUTH_DEFAULT):
     bounds = topogrid.getRange()
     xmin,xmax,ymin,ymax = bounds
     cx = xmin + (xmax-xmin)/2.0
@@ -365,11 +368,18 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     rect.set_facecolor((1,1,1,1))
     
     axleft = 0.18
-    axbottom = 0.30
+    axbottom = 0.10
     axwidth = 0.64
     #let's try holding axes width constant, adjusting height by aspect ratio of data
-    aspect = (xmax-xmin)/(ymax-ymin)
-    axheight = axwidth/aspect
+    #calculate aspect ratio by getting width and height of map in km
+    mapwidth = distance.sdist(cy,xmin,cy,xmax)
+    mapheight = distance.sdist(ymin,cx,ymax,cx)
+    #aspect_old = (xmax-xmin)/(ymax-ymin)
+    aspect = mapwidth/mapheight
+    axwidth_inches = axwidth * figx
+    axheight_inches = axwidth_inches/aspect
+    axheight = axheight_inches/figy
+    print 'Axis width: %.2f Axis height: %.2f' % (axwidth,axheight)
     #axheight = 0.59
     ax = fig.add_axes([axleft,axbottom,axwidth,axheight])
     #keep the same resolution in the mapped data
@@ -395,7 +405,7 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
     #find the mean latitude of the map we're making, and use that to come up with a zfactor
     mlat = abs(int(round(cy/10)*10))
     zfactor = zdict[mlat]
-    ls = LightSource(azdeg = 90, altdeg = 20)
+    ls = LightSource(azdeg = azimuth, altdeg = 20)
 
     #draw the ocean in light blue
     water_color = [.47,.60,.81]
@@ -1034,11 +1044,20 @@ def getMapLines(dmin,dmax):
         darray = darray[0:-1]
     return darray
 
-def slide(pgagrid,slopegrid,cohesiongrid,coeff,slopemin=3.0):
+def slide(pgagrid,slopegrid,cohesiongrid,coeff,slopemin=3.0,cohesion=None):
     pga = pgagrid.griddata
     slope = slopegrid.griddata
     slopemin = slopemin * 100
-    cohesion = cohesiongrid.griddata/10.0
+    if cohesion is not None:
+        cohesion = (numpy.ones(cohesiongrid.griddata.shape)*cohesion)/10.0
+    else:
+        cohesion = cohesiongrid.griddata/10.0
+
+    #if the whole grid is filled with NaN (many islands, at the time of this writing)
+    allNaN = numpy.isfinite(cohesion).sum() == 0
+    if allNaN:
+        cohesion = (numpy.ones(cohesiongrid.griddata.shape)*DEFAULT_COHESION)/10.0
+    
     pgaslope = pgagrid.griddata * slopegrid.griddata
     x = coeff['b0'] + coeff['bpga']*pga + coeff['bslope']*slope + coeff['bcohesion']*cohesion + coeff['bpgaslope']*pgaslope
     P = 1 / (1 + numpy.exp(-1*x))
@@ -1239,7 +1258,11 @@ def main(args):
     cohesiongrid.load(bounds=bounds)
     pgagrid = ShakeGrid(shakefile,variable='PGA')
     pgagrid.interpolateToGrid(slopegrid.getGeoDict())
-    lsmap,lspsum,lsncells,lspmax,lspmean = slide(pgagrid,slopegrid,cohesiongrid,configopts,slopemin=slopemin)
+    if args.geology is not None:
+        cohesion = args.geology
+    else:
+        cohesion = None
+    lsmap,lspsum,lsncells,lspmax,lspmean = slide(pgagrid,slopegrid,cohesiongrid,configopts,slopemin=slopemin,cohesion=cohesion)
     
     
     lat = shakeheader['event']['lat']
@@ -1277,7 +1300,7 @@ def main(args):
     makeMatMap(topogrid,liqmap,lsmap,coastshapefile,riverfolder,
                isScenario=isScenario,roads=roadshapefile,
                shapedict=shapesdict,title=title,borderfile=borderfile,
-               legdict=legdict,eventfolder=eventfolder,epicenter=(lat,lon))
+               legdict=legdict,eventfolder=eventfolder,epicenter=(lat,lon),azimuth=args.azimuth)
     saveGMT(liqmap,os.path.join(eventfolder,'liquefaction.grd'),fmt='f',bandname='liquefaction')
     saveGMT(lsmap,os.path.join(eventfolder,'landslide.grd'),fmt='f',bandname='landslide')
     saveGMT(topogrid,os.path.join(eventfolder,'topography.grd'),fmt='f',bandname='topography')
@@ -1310,6 +1333,10 @@ if __name__ == '__main__':
                       action="store_true",default=False,help="Create config file")
     parser.add_argument("-s","--shapeconfig", dest="shapeconfig", nargs=1,metavar='SHAPECONFIG',
                         help="Create config file")
+    parser.add_argument("-a","--azimuth", dest="azimuth", metavar='AZIMUTH',type=int,
+                        help="Set azimuth for light source shading",default=AZIMUTH_DEFAULT)
+    parser.add_argument("-g","--geology", dest="geology", type=int,
+                        help="Set geological 'cohesion' factor",choices=[0,5,10,20,30,40])
     args = parser.parse_args()
     main(args)
     
