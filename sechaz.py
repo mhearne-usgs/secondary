@@ -19,7 +19,7 @@ warnings.filterwarnings('ignore')
 #third party imports
 import numpy
 from matplotlib import pyplot
-from mpl_toolkits.basemap import Basemap, shiftgrid
+#from mpl_toolkits.basemap import Basemap, shiftgrid
 from matplotlib import cm
 from matplotlib.colors import LightSource
 from matplotlib.table import Table
@@ -478,7 +478,9 @@ def makeMatMap(topogrid,lqgrid,lsgrid,coastshapefile,riverfolder,isScenario=Fals
                 boundshape = psf.getShape(0)
                 bx = boundshape['x']
                 by = boundshape['y']
-
+    else:
+        bx = None
+        by = None
     
     #optionally draw the road networks
     if roads is not None:
