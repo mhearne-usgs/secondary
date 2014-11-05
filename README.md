@@ -49,6 +49,15 @@ cd secondary
 Running the script with the -c (configuration) flag will prompt you for values for the configuration
 file, which will be written to $HOME/.secondary/config.ini.
 
+To configure the program, you will need the following data files:
+Roads: Any of the shapefiles found here: http://sedac.ciesin.columbia.edu/data/set/groads-global-roads-open-access-v1/data-download*
+Borders: WDBII_border_f_L1.shp as found here: http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.3.zip
+Coasts: GSHHS_f_L1.shp as found here: http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.3.zip
+Rivers: WDBII_river_f*.shp files found here: http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.3.zip
+
+*At the time of this writing, there is no routine for selecting the appropriate roads data file from a list based on input map parameters.
+Users will have to modify the config file by hand to choose a roads layer appropriate for their region.
+
 Running SecHaz
 =========
 
