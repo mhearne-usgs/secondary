@@ -53,20 +53,30 @@ To install neicutil:
 
 pip install git+git://github.com/usgs/neicutil.git
 
-Installing and Configuring SecHaz
-----------------
+To install this package:
 
-<pre>
-mkdir ~/src
-cd ~/src
-git clone https://github.com/mhearne-usgs/secondary.git
-cd secondary
-./sechaz.py -c
-</pre>
+pip install git+git://github.com/mhearne-usgs/secondary.git
+
+To upgrade this package:
+
+pip install -U git+git://github.com/mhearne-usgs/secondary.git
+
 
 Configuring SecHaz
 ==================
-The liquefaction and landslide models are defined in the configuration file.
+The liquefaction and landslide models are defined in the configuration file, which must be
+located in the user's home folder in a sub-folder called ".secondary".  The file must be named
+"config.ini".  As an example, for a user called "frogers" would need to have a file called:
+
+Mac:
+/Users/frogers/.secondary/config.ini
+
+Linux:
+/home/frogers/.secondary/config.ini
+
+Windows (untested!):
+c:\Documents and Settings\frogers\.secondary\config.ini
+
 Below is a sample configuration file:
 <pre>
 [LIQUEFACTION_MODEL]
