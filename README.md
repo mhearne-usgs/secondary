@@ -4,12 +4,20 @@ SecHaz
 SecHaz is a program that calculates liquefaction and landslide probabilities given ground motions
 and a number of global data sets.
 
+TODO:
+-----
+ * Add roads
+ * Add zoom capability
+ * Add ability to turn off scenario watermark
+ * Add ability to choose a particular config file
+
 Installation and Dependencies
 -----------------------------
 
 This package depends on:
  * numpy, the fundamental package for scientific computing with Python. <a href="http://www.numpy.org/">http://www.numpy.org/</a>  
  * matplotlib, a Python 2D plotting library which produces publication quality figures. <a href="<a href="http://matplotlib.org/index.html">http://matplotlib.org/index.html</a>
+ * basemap, a mapping package built on top of matplotlib. <a href="http://matplotlib.org/basemap/">http://matplotlib.org/basemap/</a>
  * neicio, a Python library for reading/writing various spatial data formats (including ShakeMap grid.xml). 
  * neicmap, a Python library for doing various spatial calculations (distance, angle, etc.)
  * neicutil, a Python library which is a grab bag of interpolation routines, text manipulation functions, and time functions.
@@ -22,6 +30,16 @@ Anaconda and Enthought distributions have been successfully tested with sechaz.
  
 You may need to open a new terminal window to ensure that the newly installed versions of python and pip
 are in your path.
+
+To install basemap:
+
+If you are using anaconda (see above):
+
+conda install basemap
+
+Otherwise, see the installation instructions here:
+
+http://matplotlib.org/basemap/users/installing.html
 
 To install neicio:
 
@@ -46,47 +64,91 @@ cd secondary
 ./sechaz.py -c
 </pre>
 
-Running the script with the -c (configuration) flag will prompt you for values for the configuration
-file, which will be written to $HOME/.secondary/config.ini.
+Configuring SecHaz
+==================
+The liquefaction and landslide models are defined in the configuration file.
+Below is a sample configuration file:
+<pre>
+[LIQUEFACTION_MODEL]
+#layers must be in GMT NetCDF format
+cti_layer = /Users/mhearne/secondary/data/globalcti.grd
+vs30_layer = /Users/mhearne/secondary/data/global_vs30.grd
 
-To configure the program, you will need the following data files:
+#coefficients for the model
+b0 = 24.1
+b1 = 2.067
+b2 = 0.355
+b3 = -4.784
 
-Roads: Any of the shapefiles found here: http://sedac.ciesin.columbia.edu/data/set/groads-global-roads-open-access-v1/data-download*
+#certain variables are available from the ShakeMap:
+#MW = magnitude
+#PGV = pgv layer from the grid
+#PGA = pga layer from the grid
+#MMI = mmi layer from the grid
 
-Borders: WDBII_border_f_L1.shp as found here: http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.3.zip
+#terms to be multiplied by corresponding coefficients
+#certain operators are allowed: +,-,*,/,log,power,log10
+b1_term = log((PGA/100)*(power(MW,2.56)/power(10,2.24)))
+b2_term = cti/100
+b3_term = log(vs30)
 
-Coasts: GSHHS_f_L1.shp as found here: http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.3.zip
+#what is the grid to which all other grids will be resampled?
+baselayer = vs30
 
-Rivers: WDBII_river_f*.shp files found here: http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.3.zip
+[LANDSLIDE_MODEL]
+#layers must be in GMT NetCDF format
+cohesion_layer = /Users/mhearne/secondary/data/cohesion_10i.grd
+slope_layer = /Users/mhearne/secondary/data/slope_50.grd
 
-*At the time of this writing, there is no routine for selecting the appropriate roads data file from a list based on input map parameters.
-Users will have to modify the config file by hand to choose a roads layer appropriate for their region.
+#coefficients for the model
+b0 = -7.15
+b1 = 0.0604
+b2 = 0.000825
+b3 = 0.0201
+b4 = 1.45e-05
+
+#certain variables are available from the ShakeMap:
+#MW = magnitude
+#PGV = pgv layer from the grid
+#PGA = pga layer from the grid
+#MMI = mmi layer from the grid
+
+#terms to be multiplied by corresponding coefficients
+#certain operators are allowed: +,-,*,/,log,power,log10
+b1_term = PGA
+b2_term = slope
+b3_term = cohesion/10.0
+b4_term = PGA*slope
+
+#what is the grid wo which all other grids will be resampled?
+baselayer = cohesion
+
+[SHAKEMAP]
+variables = PGV,PGA,MW
+
+[OUTPUT]
+folder = /Users/mhearne/secondary/output
+
+[MAPDATA]
+topo = /Users/mhearne/secondary/data/etopo1_bed_g_f4.grd
+slope = /Users/mhearne/secondary/data/slope_50.grd
+slopemin = 5.0
+slopemax = 5.0
+</pre>
 
 Running SecHaz
-=========
+==============
 
 <pre>
-usage: sechaz.py [-h] [-z xmin xmax ymin ymax] [-r] [-t] [-d] [-c]
-                 [-s SHAPECONFIG]
-                 [GRIDFILE]
+usage: sechaz.py [-h] [GRIDFILE]
 
 Run the landslide and liquefaction models defined by coefficients found in a
 config.ini file. Output is a pdf map with liquefaction/landslide results
 layered on topography.
 
 positional arguments:
-  GRIDFILE              ShakeMap grid.xml file
+  GRIDFILE    ShakeMap grid.xml file
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -z xmin xmax ymin ymax, --zoom xmin xmax ymin ymax
-                        zoom in map to geographic coordinates (xmin xmax ymin
-                        ymax)
-  -r, --roads           Draw roads found inside map
-  -t, --table           Add table of summary statistics to figure
-  -d, --disable-scenario
-                        Turn scenario text off
-  -c, --configure       Create config file
-  -s SHAPECONFIG, --shapeconfig SHAPECONFIG
-                        Create config file
+  -h, --help  show this help message and exit
 </pre>
