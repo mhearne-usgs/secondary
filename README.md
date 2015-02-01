@@ -10,7 +10,6 @@ TODO:
  * Add zoom capability
  * Add ability to turn off scenario watermark
  * Add ability to choose a particular config file
- * Fix occasional left hand colorbar offset issue 
 
 Installation and Dependencies
 -----------------------------

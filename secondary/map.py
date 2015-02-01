@@ -14,7 +14,7 @@ import matplotlib as mpl
 
 #local imports
 from neicio.gmt import GMTGrid
-from neicutil.text import ceilToNearest,floorToNearest,roundToNearest
+from neicutil.text import ceilToNearest,floorToNearest,roundToNearest,commify
 
 ALPHA = 0.7
 AZDEFAULT=90
@@ -156,6 +156,15 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     iwater = np.where(topogrid2.griddata < 0) 
     im = m.imshow(rgb,cmap=topopalette)
 
+    #figure out the aspect ratio of the axes
+    print 'Map width: %s' % commify(int(m.xmax-m.xmin))
+    print 'Map height: %s' % commify(int(m.ymax-m.ymin))
+    aspect = (m.xmax-m.xmin)/(m.ymax-m.ymin)
+    slope = -0.33
+    intercept = 0.463
+    leftx = slope*aspect + intercept
+    print 'Left edge of left colorbar is at: %.2f' % leftx
+    
     #this business apparently has to happen after something has been 
     #rendered on the map, which I guess makes sense.
     #draw the map ticks on outside of all edges
@@ -208,7 +217,7 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     lsprobhandle = plt.imshow(lsdatm,cmap=palettels,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
 
     #draw landslide colorbar on the left side
-    axleft = fig.add_axes([0.133,0.1,0.033,0.8])
+    axleft = fig.add_axes([leftx,0.1,0.033,0.8])
     norm = mpl.colors.Normalize(vmin=2.0,vmax=20.0)
     cb1 = mpl.colorbar.ColorbarBase(axleft, cmap=palettels,norm=norm,orientation='vertical')
     cb1.ax.yaxis.set_ticks_position('left')
