@@ -152,7 +152,6 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     topogrid2 = GMTGrid()
     topogrid2.loadFromGrid(topogrid)
     topogrid2.interpolateToGrid(lqgrid.geodict)
-
     
     iwater = np.where(topogrid2.griddata < 0) 
     im = m.imshow(rgb,cmap=topopalette)
@@ -193,6 +192,10 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     m.colorbar(mappable=lqprobhandle)
 
     #render landslide
+    topogrid2 = GMTGrid()
+    topogrid2.loadFromGrid(topogrid)
+    topogrid2.interpolateToGrid(lsgrid.geodict)
+    iwater = np.where(topogrid2.griddata < 0) 
     lsdat = lsgrid.getData().copy() * 100.0
     clear_color = [0,0,0,0.0]
     palettels = cm.cool

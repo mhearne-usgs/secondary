@@ -28,10 +28,6 @@ def main(args):
     homedir = os.path.expanduser("~") #where is the user's home directory?
     configfile = os.path.join(homedir,'.secondary',CONFIGFILE)
     
-    if args.doConfigure:
-        configure(configfile)
-        sys.exit()
-    
     shakefile = args.shakefile
     shakemap = ShakeGrid(shakefile)
     shakeheader = shakemap.getAttributes()
