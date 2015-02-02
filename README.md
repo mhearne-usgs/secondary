@@ -10,6 +10,8 @@ TODO:
  * Add zoom capability
  * Add ability to turn off scenario watermark
  * Add ability to choose a particular config file
+ * Add epicentral star
+ * Add zoom capability
 
 Installation and Dependencies
 -----------------------------
