@@ -5,7 +5,7 @@ import ConfigParser
 import os.path
 import sys
 import warnings
-from argparse import ArgumentParser
+import argparse
 
 #turn off all warnings...
 warnings.filterwarnings('ignore')
@@ -18,6 +18,7 @@ from secondary.map import makeDualMap
 
 CONFIGFILE = 'config.ini'
 AZIMUTH_DEFAULT = 90
+DEFAULT_CONFIG = os.path.join(os.path.expanduser('~'),'.secondary','config.ini')
 
 #TODO
 # - Add roads
@@ -26,7 +27,7 @@ AZIMUTH_DEFAULT = 90
 def main(args):
     #define location for config file
     homedir = os.path.expanduser("~") #where is the user's home directory?
-    configfile = os.path.join(homedir,'.secondary',CONFIGFILE)
+    configfile = args.configFile
     
     shakefile = args.shakefile
     shakemap = ShakeGrid(shakefile)
@@ -52,8 +53,8 @@ def main(args):
     slopeout = os.path.join(outfolder,'slope.grd')
 
     #get the thresholds for liquefaction/landslide model
-    slopemin = config.get('MAPDATA','slopemin')
-    slopemax = config.get('MAPDATA','slopemax')
+    slopemin = float(config.get('MAPDATA','slopemin'))*100
+    slopemax = float(config.get('MAPDATA','slopemax'))*100
     
     probdict = {}
     gridbounds = [999,-999,999,-999] #this will hold the smallest bounding box enclosing both models
@@ -115,9 +116,12 @@ def main(args):
 if __name__ == '__main__':
     usage = """Run the landslide and liquefaction models defined by coefficients found in a config.ini file.
     Output is a pdf map with liquefaction/landslide results layered on topography."""
-    parser = ArgumentParser(description=usage)
+    parser = argparse.ArgumentParser(description=usage,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("shakefile", metavar='GRIDFILE',nargs='?',
                         help='ShakeMap grid.xml file')
+    parser.add_argument('-c','--config', dest='configFile', 
+                        default=DEFAULT_CONFIG,
+                        help='Use a custom config file')
     args = parser.parse_args()
     main(args)
     
