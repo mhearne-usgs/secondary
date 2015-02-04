@@ -15,6 +15,7 @@ from neicio.shake import ShakeGrid
 from neicio.gmt import GMTGrid
 from secondary.model import LogisticModel,getModelNames
 from secondary.map import makeDualMap
+from secondary.shape import getRoadFile
 
 CONFIGFILE = 'config.ini'
 AZIMUTH_DEFAULT = 90
@@ -35,6 +36,7 @@ def main(args):
     edict = {'mag':shakeheader['event']['magnitude'],
              'time':shakeheader['event']['event_timestamp'],
              'loc':shakeheader['event']['event_description'],
+             'epicenter':(shakeheader['event']['lat'],shakeheader['event']['lon']),
              'eventid':shakeheader['shakemap_grid']['event_id']}
     config = ConfigParser.RawConfigParser()
     config.read(configfile)
@@ -51,6 +53,16 @@ def main(args):
     slopefile = config.get('MAPDATA','slope')
     slopegrid = GMTGrid(slopefile,bounds=shakemap.getRange())
     slopeout = os.path.join(outfolder,'slope.grd')
+
+    #if they have roads configured, go find the appropriate roads file
+    hasRoads = config.has_option('MAPDATA','roadfolder')
+    hasContinents = config.has_option('MAPDATA','continents')
+    if hasRoads and hasContinents and args.roads:
+        roadfolder = config.get('MAPDATA','roadfolder')
+        contfile = config.get('MAPDATA','continents')
+        roadfile = getRoadFile(contfile,roadfolder,edict['epicenter'][0],edict['epicenter'][1])
+    else:
+        roadfile = None
 
     #get the thresholds for liquefaction/landslide model
     slopemin = float(config.get('MAPDATA','slopemin'))*100
@@ -111,7 +123,8 @@ def main(args):
     isScenario = shakeheader['shakemap_grid']['shakemap_event_type'].lower() == 'scenario'
     timestr = shakeheader['event']['event_timestamp'].strftime('%b %d %Y')
     location = shakeheader['event']['event_description']
-    makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,isScenario=isScenario)
+    makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,
+                isScenario=isScenario,roadfile=roadfile)
 
 if __name__ == '__main__':
     usage = """Run the landslide and liquefaction models defined by coefficients found in a config.ini file.
@@ -122,6 +135,9 @@ if __name__ == '__main__':
     parser.add_argument('-c','--config', dest='configFile', 
                         default=DEFAULT_CONFIG,
                         help='Use a custom config file')
+    parser.add_argument('-r','--roads', action='store_true', 
+                        default=False,
+                        help='Draw roads (can take significantly longer)')
     args = parser.parse_args()
     main(args)
     

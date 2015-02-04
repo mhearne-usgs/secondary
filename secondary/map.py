@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LightSource
 from matplotlib import cm
 import matplotlib as mpl
+import fiona
+from shapely.geometry import shape,Polygon,LineString
 
 #local imports
 from neicio.gmt import GMTGrid
@@ -19,6 +21,7 @@ from neicutil.text import ceilToNearest,floorToNearest,roundToNearest,commify
 ALPHA = 0.7
 AZDEFAULT=90
 ALTDEFAULT=20
+ROADCOLOR = '#00FF00'
 
 def getGridExtent(grid,basemap):
     lonmin,lonmax,latmin,latmax = grid.getRange()
@@ -132,9 +135,30 @@ def getMapTicks(m,xmin,xmax,ymin,ymax):
         yticks.append(y)
     
     return (xticks,xlabels,yticks,ylabels)
+
+def plotRoads(m,roadfile):
+    xmin = m.llcrnrlon
+    xmax = m.urcrnrlon
+    ymin = m.llcrnrlat
+    ymax = m.urcrnrlat
+    box = Polygon([(xmin,ymin),(xmax,ymin),(xmax,ymax),(xmin,ymax)])
+    roadshapes = fiona.open(roadfile,'r')
+    for rshape in roadshapes:
+        # rxmin,rymin,rxmax,rymax = rshape.bounds
+        # rbox = Polygon([(rxmin,rymin),(rxmax,rymin),(rxmax,rymax),(rxmin,rymax)])
+        # if not rbox.intersects(box):
+        #     continue
+        road = shape(rshape['geometry'])
+        shapeint = box.intersection(road)
+        if isinstance(shapeint,LineString):
+            xy = list(shapeint.coords)
+            lon,lat = zip(*xy)
+            x,y = m(lon,lat)
+            m.plot(x,y,ROADCOLOR)
+    roadshapes.close()
     
 
-def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False):
+def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadfile=None):
     # create the figure and axes instances.
     fig = plt.figure()
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
@@ -222,6 +246,11 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     cb1 = mpl.colorbar.ColorbarBase(axleft, cmap=palettels,norm=norm,orientation='vertical')
     cb1.ax.yaxis.set_ticks_position('left')
 
+    #draw roads on the map, if they were provided to us
+    roadfile = None
+    if roadfile is not None:
+        plotRoads(m,roadfile)
+    
     #draw titles
     cbartitle_ls = 'Landslide\nProbability'
     plt.text(-1.0,1.03,cbartitle_ls,multialignment='left',axes=ax)
@@ -235,9 +264,6 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     water_color = [.47,.60,.81]
     m.drawmapboundary(fill_color=water_color)
 
-    #draw coastlines
-    #m.drawcoastlines()
-
     if isScenario:
         title = eventdict['loc']
     else:
@@ -246,6 +272,12 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
 
     #draw the title on the plot
     ax.set_title(title)
+
+    #draw star at epicenter
+    plt.sca(ax)
+    elat,elon = eventdict['epicenter']
+    ex,ey = m(elon,elat)
+    plt.plot(ex,ey,'*',markeredgecolor='k',mfc='None',mew=1.5,ms=24)
     
     #draw scenario watermark, if scenario
     if isScenario:
