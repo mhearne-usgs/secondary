@@ -83,8 +83,8 @@ Below is a sample configuration file:
 <pre>
 [LIQUEFACTION_MODEL]
 #layers must be in GMT NetCDF format
-cti_layer = /Users/mhearne/secondary/data/globalcti.grd
-vs30_layer = /Users/mhearne/secondary/data/global_vs30.grd
+cti_layer = /Users/frogers/secondary/data/globalcti.grd
+vs30_layer = /Users/frogers/secondary/data/global_vs30.grd
 
 #coefficients for the model
 b0 = 24.1
@@ -109,8 +109,8 @@ baselayer = vs30
 
 [LANDSLIDE_MODEL]
 #layers must be in GMT NetCDF format
-cohesion_layer = /Users/mhearne/secondary/data/cohesion_10i.grd
-slope_layer = /Users/mhearne/secondary/data/slope_50.grd
+cohesion_layer = /Users/frogers/secondary/data/cohesion_10i.grd
+slope_layer = /Users/frogers/secondary/data/slope_50.grd
 
 #coefficients for the model
 b0 = -7.15
@@ -139,13 +139,20 @@ baselayer = cohesion
 variables = PGV,PGA,MW
 
 [OUTPUT]
-folder = /Users/mhearne/secondary/output
+folder = /Users/frogers/secondary/output
 
 [MAPDATA]
-topo = /Users/mhearne/secondary/data/etopo1_bed_g_f4.grd
-slope = /Users/mhearne/secondary/data/slope_50.grd
+#required layers
+topo = /Users/frogers/secondary/data/etopo1_bed_g_f4.grd
+slope = /Users/frogers/secondary/data/slope_50.grd
+
+#required slope parameters - pixels with slope > slopemax will not be liquefied
 slopemin = 5.0
 slopemax = 5.0
+
+#optional layers
+roadfolder = /Users/frogers/secondary/data/roads
+continents = /Users/frogers/secondary/data/continent.shp
 </pre>
 
 Running SecHaz
