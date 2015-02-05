@@ -188,6 +188,10 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     intercept = 0.463
     leftx = slope*aspect + intercept
     print 'Left edge of left colorbar is at: %.2f' % leftx
+    slope = 20.833
+    intercept = -0.833
+    titlex = slope*aspect + intercept
+    print 'Title X of right colorbar is at: %.2f' % titlex
     
     #this business apparently has to happen after something has been 
     #rendered on the map, which I guess makes sense.
@@ -256,7 +260,7 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     plt.text(-1.0,1.03,cbartitle_ls,multialignment='left',axes=ax)
 
     cbartitle_ls = 'Liquefaction\nProbability'
-    plt.text(20.0,1.03,cbartitle_ls,multialignment='left',axes=ax)
+    plt.text(titlex,1.03,cbartitle_ls,multialignment='left',axes=ax)
 
     axwidth = 20 #where can I get this from?
 

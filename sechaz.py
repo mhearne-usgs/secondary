@@ -112,7 +112,11 @@ def main(args):
             layergrid.save(layerfile)
 
     topofile = config.get('MAPDATA','topo')
-    topogrid = GMTGrid(topofile,bounds=shakemap.getRange())
+    bigbounds = shakemap.getRange()
+    xdim = shakemap.geodict['xdim']
+    ydim = shakemap.geodict['xdim']
+    bigbounds = (bigbounds[0]-xdim*2,bigbounds[1]+xdim*2,bigbounds[2]-ydim*2,bigbounds[3]+ydim*2)
+    topogrid = GMTGrid(topofile,bounds=bigbounds)
     topoout = os.path.join(outfolder,'topography.grd')
     print 'Saving topography to %s' % topoout
     topogrid.save(topoout)
@@ -121,6 +125,8 @@ def main(args):
     slopegrid.save(slopeout)
 
     isScenario = shakeheader['shakemap_grid']['shakemap_event_type'].lower() == 'scenario'
+    if args.noscenario:
+        isScenario = False
     timestr = shakeheader['event']['event_timestamp'].strftime('%b %d %Y')
     location = shakeheader['event']['event_description']
     makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,
@@ -138,6 +144,9 @@ if __name__ == '__main__':
     parser.add_argument('-r','--roads', action='store_true', 
                         default=False,
                         help='Draw roads (can take significantly longer)')
+    parser.add_argument('-n','--noscenario', action='store_true', 
+                        default=False,
+                        help='Turn off scenario watermark (use with caution)')
     args = parser.parse_args()
     main(args)
     
