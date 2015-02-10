@@ -14,16 +14,51 @@ warnings.filterwarnings('ignore')
 from neicio.shake import ShakeGrid
 from neicio.gmt import GMTGrid
 from secondary.model import LogisticModel,getModelNames
-from secondary.map import makeDualMap
+from secondary.map import makeDualMap,renderLayer
 from secondary.shape import getRoadFile
+
+#third party imports
+from matplotlib import cm
 
 CONFIGFILE = 'config.ini'
 AZIMUTH_DEFAULT = 90
 DEFAULT_CONFIG = os.path.join(os.path.expanduser('~'),'.secondary','config.ini')
 
-#TODO
-# - Add roads
-# - Add coastlines - drawcoastlines() is pretty slow at full res, and may not match topo.  Plot zero topo contour instead?
+def getColorMaps(configfile):
+    config = ConfigParser.ConfigParser()
+    config.readfp(open(configfile))
+    sections = config.sections()
+    colormaps = {}
+    maps = [m for m in cm.datad]
+    lmaps = [m.lower() for m in cm.datad]
+    for section in sections:
+        if section.lower().find('_model') > -1:
+            modelname = section.split('_')[0].lower()
+            layers = []
+            for option in config.options(section):
+                if option.lower().find('_layer') > -1:
+                    layers.append(option.split('_')[0].lower())
+            for option in config.options(section):
+                if option.find('_colormap') > -1:
+                    layer = option.split('_')[0].lower()
+                    if layer not in layers:
+                        print 'Colormap specified for non-existent layer "%s".  Skipping.'
+                        continue
+                    value = config.get(section,option).strip().lower()
+                    if value not in lmaps:
+                        cmapstr = ','.join(maps)
+                        print 'Colormap specified for layer "%s" of "%s" is not valid.  The list of valid colormaps is: %s. Skipping' % cmapstr
+                        continue
+                    cmap = maps[lmaps.index(value)]
+                    if colormaps.has_key(modelname):
+                        mdict = colormaps[modelname]
+                        mdict[layer] = cmap
+                    else:
+                        mdict = {layer:cmap}
+                        colormaps[modelname] = mdict
+        
+    return colormaps                
+                
 
 def main(args):
     #define location for config file
@@ -72,6 +107,7 @@ def main(args):
     gridbounds = [999,-999,999,-999] #this will hold the smallest bounding box enclosing both models
     for model in getModelNames(configfile):
         lm = LogisticModel(configfile,shakefile,model)
+        colormaps = getColorMaps(configfile)
         print 'Equation for %s model:' % model
         print 
         print lm.getEquation()
@@ -110,6 +146,7 @@ def main(args):
             layerfile = os.path.join(outfolder,layername+'.grd')
             print 'Saving input grid %s to %s...' % (layername,layerfile)
             layergrid.save(layerfile)
+            renderLayer(layergrid,layername,outfolder,edict,model,colormaps)
 
     topofile = config.get('MAPDATA','topo')
     bigbounds = shakemap.getRange()

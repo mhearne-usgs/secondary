@@ -103,6 +103,9 @@ b3_term = log(vs30)
 #what is the grid to which all other grids will be resampled?
 baselayer = vs30
 
+#custom settings for rendering of individual layers - value must be a valid matplotlib colormap name.
+vs30_colormap = jet_r
+
 [LANDSLIDE_MODEL]
 #layers must be in GMT NetCDF format
 cohesion_layer = /Users/frogers/secondary/data/cohesion_10i.grd

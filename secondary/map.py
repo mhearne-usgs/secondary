@@ -157,7 +157,52 @@ def plotRoads(m,roadfile):
             m.plot(x,y,ROADCOLOR)
     roadshapes.close()
     
+def renderLayer(layergrid,layername,outfolder,edict,model,colormaps):
+    fig = plt.figure()
+    ax = fig.add_axes([0.1,0.1,0.8,0.8])
+    xmin,xmax,ymin,ymax = layergrid.getRange()
+    clat = ymin + (ymax-ymin)/2.0
+    clon = xmin + (xmax-xmin)/2.0
+    m = Basemap(llcrnrlon=xmin,llcrnrlat=ymin,urcrnrlon=xmax,urcrnrlat=ymax,\
+                rsphere=(6378137.00,6356752.3142),\
+                resolution='l',area_thresh=1000.,projection='lcc',\
+                lat_1=clat,lon_0=clon,ax=ax)
+    water_color = [.47,.60,.81]
+    m.drawmapboundary(fill_color=water_color)
 
+    #render layer
+    lsdat = layergrid.getData()
+    extent = getGridExtent(layergrid,m)
+    cmap = 'jet'
+    if colormaps.has_key(model):
+        mdict = colormaps[model]
+        if mdict.has_key(layername):
+            cmap = mdict[layername]
+    lsprobhandle = plt.imshow(lsdat,origin='upper',extent=extent,cmap=cm.get_cmap(cmap))
+    plt.colorbar()
+    
+    #this business apparently has to happen after something has been 
+    #rendered on the map, which I guess makes sense.
+    #draw the map ticks on outside of all edges
+    fig.canvas.draw() #have to do this for tick stuff to show
+    xticks,xlabels,yticks,ylabels = getMapTicks(m,xmin,xmax,ymin,ymax)
+    plt.sca(ax)
+    plt.tick_params(axis='both',direction='in',right='on',colors='white')
+    plt.xticks(xticks,xlabels,size=6)
+    plt.yticks(yticks,ylabels,size=6)
+    for tick in ax.axes.yaxis.get_major_ticks():
+        tick.set_pad(-33)
+        tick.label2.set_horizontalalignment('right')
+    for tick in ax.axes.xaxis.get_major_ticks():
+        tick.set_pad(-10)
+        tick.label2.set_verticalalignment('top')
+    [i.set_color("white") for i in plt.gca().get_xticklabels()]
+    [i.set_color("white") for i in plt.gca().get_yticklabels()]
+
+    plt.title('%s Layer for event %s' % (layername,edict['eventid']))
+    outfile = os.path.join(outfolder,'%s.pdf' % layername)
+    plt.savefig(outfile)
+                
 def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadfile=None):
     # create the figure and axes instances.
     fig = plt.figure()
