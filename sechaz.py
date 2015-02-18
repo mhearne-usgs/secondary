@@ -14,7 +14,7 @@ warnings.filterwarnings('ignore')
 from neicio.shake import ShakeGrid
 from neicio.gmt import GMTGrid
 from secondary.model import LogisticModel,getModelNames
-from secondary.map import makeDualMap,renderLayer
+from secondary.map import makeDualMap,renderPanel
 from secondary.shape import getRoadFile
 
 #third party imports
@@ -142,11 +142,12 @@ def main(args):
         probfile = os.path.join(outfolder,'%s.grd' % model)
         print 'Saving %s model output to %s' % (model,probfile)
         probgrid.save(probfile)
-        for layername,layergrid in lm.layerdict.iteritems():
-            layerfile = os.path.join(outfolder,layername+'.grd')
-            print 'Saving input grid %s to %s...' % (layername,layerfile)
-            layergrid.save(layerfile)
-            renderLayer(layergrid,layername,outfolder,edict,model,colormaps)
+        renderPanel(lm,colormaps,outfolder,edict)
+        # for layername,layergrid in lm.layerdict.iteritems():
+        #     layerfile = os.path.join(outfolder,layername+'.grd')
+        #     print 'Saving input grid %s to %s...' % (layername,layerfile)
+        #     layergrid.save(layerfile)
+        #     renderLayer(layergrid,layername,outfolder,edict,model,colormaps)
 
     topofile = config.get('MAPDATA','topo')
     bigbounds = shakemap.getRange()

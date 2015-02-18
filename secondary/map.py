@@ -17,6 +17,7 @@ from shapely.geometry import shape,Polygon,LineString
 #local imports
 from neicio.gmt import GMTGrid
 from neicutil.text import ceilToNearest,floorToNearest,roundToNearest,commify
+import model
 
 ALPHA = 0.7
 AZDEFAULT=90
@@ -156,11 +157,40 @@ def plotRoads(m,roadfile):
             x,y = m(lon,lat)
             m.plot(x,y,ROADCOLOR)
     roadshapes.close()
-    
-def renderLayer(layergrid,layername,outfolder,edict,model,colormaps):
-    fig = plt.figure()
-    ax = fig.add_axes([0.1,0.1,0.8,0.8])
-    xmin,xmax,ymin,ymax = layergrid.getRange()
+
+def renderPanel(logmodel,colormaps,outfolder,edict):
+    nparray = "<type 'numpy.ndarray'>"
+    #first, figure out how many layers we have
+    layerdict = logmodel.layerdict
+    for smterm in model.SM_TERMS:
+        for term in logmodel.terms.values():
+            if term.find(smterm) > -1 and not isinstance(logmodel.shakedict[smterm],float):
+                layerdict[smterm] = logmodel.shakedict[smterm]
+    nlayers = len(layerdict)
+    if nlayers % 2 == 0:
+        npanels = nlayers
+    else:
+        npanels = nlayers + 1
+    ncols = 2
+    nrows = npanels/ncols
+    fig,axeslist = plt.subplots(nrows=nrows,ncols=2,squeeze=True)
+    ic = 0
+    for layername,layergrid in layerdict.iteritems():
+        irow = ic % ncols
+        icol = ((ic - irow)/ncols) % nrows
+        ax = axeslist[irow][icol]
+        renderLayer(layername,layergrid,outfolder,edict,fig,ax,logmodel.model,colormaps)
+        ic += 1
+    outfile = os.path.join(outfolder,'%s_layers.pdf' % logmodel.model)
+    plt.savefig(outfile)
+    print 'Saving inputs to %s' % outfile
+    return outfile
+
+def renderLayer(layername,layergrid,outfolder,edict,fig,ax,model,colormaps):
+    try:
+        xmin,xmax,ymin,ymax = layergrid.getRange()
+    except:
+        pass
     clat = ymin + (ymax-ymin)/2.0
     clon = xmin + (xmax-xmin)/2.0
     m = Basemap(llcrnrlon=xmin,llcrnrlat=ymin,urcrnrlon=xmax,urcrnrlat=ymax,\
@@ -200,9 +230,11 @@ def renderLayer(layergrid,layername,outfolder,edict,model,colormaps):
     [i.set_color("white") for i in plt.gca().get_yticklabels()]
 
     plt.title('%s Layer for event %s' % (layername,edict['eventid']))
-    outfile = os.path.join(outfolder,'%s.pdf' % layername)
-    plt.savefig(outfile)
-                
+    
+
+
+    
+    
 def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadfile=None):
     # create the figure and axes instances.
     fig = plt.figure()

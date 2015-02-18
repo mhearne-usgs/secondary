@@ -8,6 +8,7 @@ TODO:
 -----
  * Add zoom capability
  * Add ability to turn off scenario watermark
+ * Fix input panel plots - titles (I think) are reversed top-to-bottom.
 
 Installation and Dependencies
 -----------------------------

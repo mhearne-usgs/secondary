@@ -133,15 +133,21 @@ class LogisticModel(object):
         if 'PGA' in smparams:
             shakemap = ShakeGrid(shakefile,variable='PGA')
             shakemap.interpolateToGrid(geodict)
-            shakedict['PGA'] = shakemap.griddata.copy()
+            tmpgrid = gmt.GMTGrid()
+            tmpgrid.loadFromGrid(shakemap)
+            shakedict['PGA'] = tmpgrid
         if 'PGV' in smparams:
             shakemap = ShakeGrid(shakefile,variable='PGV')
             shakemap.interpolateToGrid(geodict)
-            shakedict['PGV'] = shakemap.griddata.copy()
+            tmpgrid = gmt.GMTGrid()
+            tmpgrid.loadFromGrid(shakemap)
+            shakedict['PGV'] = tmpgrid
         if 'MMI' in smparams:
             shakemap = ShakeGrid(shakefile,variable='MMI')
             shakemap.interpolateToGrid(geodict)
-            shakedict['MMI'] = shakemap.griddata.copy()
+            tmpgrid = gmt.GMTGrid()
+            tmpgrid.loadFromGrid(shakemap)
+            shakedict['MMI'] = tmpgrid
         if 'MW' in smparams:
             if shakemap is None:
                 shakemap = ShakeGrid(shakefile,variable='MMI')
@@ -181,7 +187,7 @@ class LogisticModel(object):
             if term.find(op) > -1:
                 term = term.replace(op,'np.'+op)
         for sm_term in SM_TERMS:
-            term = term.replace(sm_term,"self.shakedict['%s']" % sm_term)
+            term = term.replace(sm_term,"self.shakedict['%s'].griddata" % sm_term)
 
         for layer in layers:
             term = term.replace(layer,"self.layerdict['%s'].griddata" % layer)
