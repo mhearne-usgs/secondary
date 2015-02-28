@@ -16,6 +16,7 @@ LAYER_PATTERN = '_layer'
 TERM_PATTERN = 'term'
 
 SM_TERMS = ['MW','PGA','PGV','MMI']
+SM_GRID_TERMS = ['PGA','PGV','MMI']
 OPERATORS = ['log','log10','power','sqrt'] #these will get np. prepended
 FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
 INTPAT = '[0-9]+'
@@ -72,10 +73,10 @@ class LogisticModel(object):
         geodict = ShakeGrid(shakefile,variable='MMI').geodict
         baselayerfile = self.layers[baselayer]
         #make the bounds for the base grid smaller than the shakemap
-        basebounds = (geodict['xmin']+geodict['xdim'],
-                      geodict['xmax']-geodict['xdim'],
-                      geodict['ymin']+geodict['ydim'],
-                      geodict['ymax']-geodict['ydim'])
+        basebounds = (geodict['xmin']+(geodict['xdim']*2),
+                      geodict['xmax']-(geodict['xdim']*2),
+                      geodict['ymin']+(geodict['ydim']*2),
+                      geodict['ymax']-(geodict['ydim']*2))
         #make the bounds for the other grids the same as the shakemap
         layerbounds = (geodict['xmin'],
                        geodict['xmax'],
@@ -89,7 +90,10 @@ class LogisticModel(object):
         for layername in layernames:
             layerfile = self.layers[layername]
             layergrid = gmt.GMTGrid(layerfile,bounds=layerbounds)
-            layergrid.interpolateToGrid(basegrid.geodict)
+            try:
+                layergrid.interpolateToGrid(basegrid.geodict)
+            except Exception,msg:
+                pass
             self.layerdict[layername] = layergrid
                 
         if not self.coeffs.has_key('b0'):
@@ -186,9 +190,11 @@ class LogisticModel(object):
         for op in OPERATORS:
             if term.find(op) > -1:
                 term = term.replace(op,'np.'+op)
-        for sm_term in SM_TERMS:
+        for sm_term in SM_GRID_TERMS:
             term = term.replace(sm_term,"self.shakedict['%s'].griddata" % sm_term)
 
+        term = term.replace('MW',"self.shakedict['MW']")
+            
         for layer in layers:
             term = term.replace(layer,"self.layerdict['%s'].griddata" % layer)
         return (term,tterm)

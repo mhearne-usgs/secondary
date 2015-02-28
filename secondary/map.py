@@ -176,8 +176,8 @@ def renderPanel(logmodel,colormaps,outfolder,edict):
     fig,axeslist = plt.subplots(nrows=nrows,ncols=2,squeeze=True)
     ic = 0
     for layername,layergrid in layerdict.iteritems():
-        irow = ic % ncols
-        icol = ((ic - irow)/ncols) % nrows
+        irow = ic % nrows
+        icol = (ic - irow)/nrows
         ax = axeslist[irow][icol]
         renderLayer(layername,layergrid,outfolder,edict,fig,ax,logmodel.model,colormaps)
         ic += 1
