@@ -137,14 +137,15 @@ def getMapTicks(m,xmin,xmax,ymin,ymax):
     
     return (xticks,xlabels,yticks,ylabels)
 
-def plotRoads(m,roadfile):
+def plotRoads(m,roadshapes):
     xmin = m.llcrnrlon
     xmax = m.urcrnrlon
     ymin = m.llcrnrlat
     ymax = m.urcrnrlat
     box = Polygon([(xmin,ymin),(xmax,ymin),(xmax,ymax),(xmin,ymax)])
-    roadshapes = fiona.open(roadfile,'r')
-    for rshape in roadshapes:
+    shapes = fiona.open(roadfile,'r')
+    roadshapes = shapes.items(bbox=(xmin,ymin,xmax,ymax))
+    for shapeid,rshape in roadshapes:
         # rxmin,rymin,rxmax,rymax = rshape.bounds
         # rbox = Polygon([(rxmin,rymin),(rxmax,rymin),(rxmax,rymax),(rxmin,rymax)])
         # if not rbox.intersects(box):
@@ -156,35 +157,38 @@ def plotRoads(m,roadfile):
             lon,lat = zip(*xy)
             x,y = m(lon,lat)
             m.plot(x,y,ROADCOLOR)
-    roadshapes.close()
+    shapes.close()
 
 def renderPanel(logmodel,colormaps,outfolder,edict):
     nparray = "<type 'numpy.ndarray'>"
     #first, figure out how many layers we have
     layerdict = logmodel.layerdict
+    outfiles = []
     for smterm in model.SM_TERMS:
         for term in logmodel.terms.values():
             if term.find(smterm) > -1 and not isinstance(logmodel.shakedict[smterm],float):
                 layerdict[smterm] = logmodel.shakedict[smterm]
-    nlayers = len(layerdict)
-    if nlayers % 2 == 0:
-        npanels = nlayers
-    else:
-        npanels = nlayers + 1
-    ncols = 2
-    nrows = npanels/ncols
-    fig,axeslist = plt.subplots(nrows=nrows,ncols=2,squeeze=True)
-    ic = 0
+
     for layername,layergrid in layerdict.iteritems():
-        irow = ic % nrows
-        icol = (ic - irow)/nrows
-        ax = axeslist[irow][icol]
+        fig = plt.figure(figsize=(8,8))
+        ax = plt.gca()
         renderLayer(layername,layergrid,outfolder,edict,fig,ax,logmodel.model,colormaps)
-        ic += 1
-    outfile = os.path.join(outfolder,'%s_layers.pdf' % logmodel.model)
-    plt.savefig(outfile)
-    print 'Saving inputs to %s' % outfile
-    return outfile
+        outfile = os.path.join(outfolder,'%s_%s.pdf' % (layername,logmodel.model))
+        print 'Saving input layer %s to %s' % (layername,outfile)
+        plt.savefig(outfile)
+        outfiles.append(outfile)
+
+    outfile = os.path.join(outfolder,'%s_model.pdf' % logmodel.model)
+    fig = plt.figure(figsize=(8,8))
+    ax = plt.gca()
+    P = logmodel.calculate()
+    pgrid = GMTGrid()
+    pgrid.griddata = P.copy()
+    pgrid.geodict = layergrid.geodict.copy()
+    renderLayer(logmodel.model,pgrid,outfolder,edict,fig,ax,logmodel.model,colormaps)
+    print 'Saving %s model to %s' % (logmodel.model,outfile)
+    outfiles.append(outfile)
+    return outfiles
 
 def renderLayer(layername,layergrid,outfolder,edict,fig,ax,model,colormaps):
     try:
@@ -229,13 +233,9 @@ def renderLayer(layername,layergrid,outfolder,edict,fig,ax,model,colormaps):
     [i.set_color("white") for i in plt.gca().get_xticklabels()]
     [i.set_color("white") for i in plt.gca().get_yticklabels()]
 
-    plt.title('%s Layer for event %s' % (layername,edict['eventid']))
+    plt.title('%s' % (layername))
     
-
-
-    
-    
-def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadfile=None):
+def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadslist=None,roadcolor=None):
     # create the figure and axes instances.
     fig = plt.figure()
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
@@ -303,7 +303,9 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     lqprobhandle = m.imshow(lqdatm,cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
     # ax2 = fig.add_axes([0.85,0.1,0.05,1.0])
     # plt.sca(ax2)
-    m.colorbar(mappable=lqprobhandle)
+    cbarlq = m.colorbar(mappable=lqprobhandle)
+    cbarlq.set_ticks([2.0,11.0,19.0])
+    cbarlq.set_ticklabels(['Low','Medium','High'])# vertically oriented colorbar
 
     #render landslide
     topogrid2 = GMTGrid()
@@ -324,13 +326,19 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     #draw landslide colorbar on the left side
     axleft = fig.add_axes([leftx,0.1,0.033,0.8])
     norm = mpl.colors.Normalize(vmin=2.0,vmax=20.0)
-    cb1 = mpl.colorbar.ColorbarBase(axleft, cmap=palettels,norm=norm,orientation='vertical')
-    cb1.ax.yaxis.set_ticks_position('left')
+    cbarls = mpl.colorbar.ColorbarBase(axleft, cmap=palettels,norm=norm,orientation='vertical')
+    cbarls.ax.yaxis.set_ticks_position('left')
+    cbarls.set_ticks([2.0,11.0,19.0])
+    cbarls.set_ticklabels(['Low','Medium','High'])# vertically oriented colorbar
 
     #draw roads on the map, if they were provided to us
-    roadfile = None
-    if roadfile is not None:
-        plotRoads(m,roadfile)
+    #roadfile = None
+    if roadslist is not None:
+        for road in roadslist:
+            xy = list(road['geometry']['coordinates'])
+            roadx,roady = zip(*xy)
+            mapx,mapy = m(roadx,roady)
+            m.plot(mapx,mapy,roadcolor)
     
     #draw titles
     cbartitle_ls = 'Landslide\nProbability'

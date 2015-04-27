@@ -6,6 +6,7 @@ import os.path
 import sys
 import warnings
 import argparse
+import glob
 
 #turn off all warnings...
 warnings.filterwarnings('ignore')
@@ -14,11 +15,12 @@ warnings.filterwarnings('ignore')
 from neicio.shake import ShakeGrid
 from neicio.gmt import GMTGrid
 from secondary.model import LogisticModel,getModelNames
-from secondary.map import makeDualMap,renderPanel
+from secondary.map import makeDualMap,renderPanel,ROADCOLOR
 from secondary.shape import getRoadFile
 
 #third party imports
 from matplotlib import cm
+import fiona
 
 CONFIGFILE = 'config.ini'
 AZIMUTH_DEFAULT = 90
@@ -89,15 +91,26 @@ def main(args):
     slopegrid = GMTGrid(slopefile,bounds=shakemap.getRange())
     slopeout = os.path.join(outfolder,'slope.grd')
 
-    #if they have roads configured, go find the appropriate roads file
+    #if they have roads configured, go find the appropriate roads segments
     hasRoads = config.has_option('MAPDATA','roadfolder')
-    hasContinents = config.has_option('MAPDATA','continents')
-    if hasRoads and hasContinents and args.roads:
-        roadfolder = config.get('MAPDATA','roadfolder')
-        contfile = config.get('MAPDATA','continents')
-        roadfile = getRoadFile(contfile,roadfolder,edict['epicenter'][0],edict['epicenter'][1])
+    if config.has_option('MAPDATA','roadcolor'):
+        roadcolor = '#'+config.get('MAPDATA','roadcolor')
     else:
-        roadfile = None
+        roadcolor = ROADCOLOR
+    roadslist = []
+    if hasRoads and args.roads:
+        roadroot = config.get('MAPDATA','roadfolder')
+        xmin,xmax,ymin,ymax = shakemap.getRange()
+        for folder in os.listdir(roadroot):
+            roadfolder = os.path.join(roadroot,folder)
+            shpfiles = glob.glob(os.path.join(roadfolder,'*.shp'))
+            if len(shpfiles):
+                shpfile = shpfiles[0]
+                f = fiona.open(shpfile)
+                shapes = list(f.items(bbox=(xmin,ymin,xmax,ymax)))
+                for shapeid,shapedict in shapes:
+                    roadslist.append(shapedict)
+                f.close()
 
     #get the thresholds for liquefaction/landslide model
     slopemin = float(config.get('MAPDATA','slopemin'))*100
@@ -168,7 +181,7 @@ def main(args):
     timestr = shakeheader['event']['event_timestamp'].strftime('%b %d %Y')
     location = shakeheader['event']['event_description']
     makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,
-                isScenario=isScenario,roadfile=roadfile)
+                isScenario=isScenario,roadslist=roadslist,roadcolor=roadcolor)
 
 if __name__ == '__main__':
     usage = """Run the landslide and liquefaction models defined by coefficients found in a config.ini file.
@@ -180,9 +193,8 @@ if __name__ == '__main__':
                         default=DEFAULT_CONFIG,
                         help='Use a custom config file')
     parser.add_argument('-r','--roads', action='store_true', 
-                        default=False,
-                        help='Draw roads (can take significantly longer)')
-    parser.add_argument('-n','--noscenario', action='store_true', 
+                        help='Draw roads')
+    parser.add_argument('-n','--noscenario', action='store_true', #00FF00
                         default=False,
                         help='Turn off scenario watermark (use with caution)')
     args = parser.parse_args()
