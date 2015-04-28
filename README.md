@@ -41,6 +41,16 @@ Otherwise, see the installation instructions here:
 
 http://matplotlib.org/basemap/users/installing.html
 
+To install fiona:
+
+If you are using anaconda (see above):
+
+conda install fiona
+
+Otherwise, see the installation instructions here:
+
+http://toblerity.org/fiona/README.html#installation
+
 To install neicio:
 
 pip install git+git://github.com/usgs/neicio.git
@@ -61,6 +71,30 @@ To upgrade this package:
 
 pip install -U git+git://github.com/mhearne-usgs/secondary.git
 
+Data Sources
+============
+The base data used for this software comes from open sources,
+and is processed using open source tools:
+
+ * gdal - http://trac.osgeo.org/gdal/wiki/DownloadingGdalBinaries
+ * GMT 5 - http://gmt.soest.hawaii.edu/projects/gmt/wiki/Installing
+
+Topography:
+USGS Global Multi-resolution Terrain Elevation Data 2010 (GMTED2010)
+http://topotools.cr.usgs.gov/gmted_viewer/data/Grid_ZipFiles/md30_grd.zip
+
+To convert this data to a GMT-style NetCDF 3 file, you can do the following on a Unix-like system:
+
+ * unzip md30_grd.zip
+ * gdal_translate -of AAIGrid md30_grd md30_grd.ascii
+ * gmt grdreformat md30_grd.ascii=ei md30_grid_gmt5.grd=cs
+
+Roads:
+Global Roads Open Access Data Set (gROADS)
+http://sedac.ciesin.columbia.edu/data/set/groads-global-roads-open-access-v1/data-download (requires registration)
+
+Download all of the regional *shapefile* road data sets into a common data directory, and unzip them in place.
+The *roadfolder* configuration option should point to that common data directory.
 
 Configuring SecHaz
 ==================

@@ -24,6 +24,8 @@ AZDEFAULT=90
 ALTDEFAULT=20
 ROADCOLOR = '#00FF00'
 
+SEA_LEVEL = 0
+
 def getGridExtent(grid,basemap):
     lonmin,lonmax,latmin,latmax = grid.getRange()
     xmin,ymin = basemap(lonmin,latmin)
@@ -35,7 +37,7 @@ def getTopoRGB(topogrid):
     topodat = topogrid.getData().copy()
     cy = topogrid.geodict['ymin'] + (topogrid.geodict['ymax'] - topogrid.geodict['ymin'])/2.0
     #flag the regions where topography is less than 0 (we'll color this ocean later)
-    i = np.where(topodat < 0)
+    i = np.where(topodat == SEA_LEVEL)
 
     #do shaded relief stuff
     #keys are latitude values
@@ -248,13 +250,15 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
                 rsphere=(6378137.00,6356752.3142),\
                 resolution='l',area_thresh=1000.,projection='lcc',\
                 lat_1=clat,lon_0=clon,ax=ax)
-    
+
+    clear_color = [0,0,0,0.0]
+                
     rgb,topopalette = getTopoRGB(topogrid)
     topogrid2 = GMTGrid()
     topogrid2.loadFromGrid(topogrid)
     topogrid2.interpolateToGrid(lqgrid.geodict)
     
-    iwater = np.where(topogrid2.griddata < 0) 
+    iwater = np.where(topogrid2.griddata == SEA_LEVEL) 
     im = m.imshow(rgb,cmap=topopalette)
 
     #figure out the aspect ratio of the axes
@@ -292,7 +296,7 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     
     #render liquefaction
     lqdat = lqgrid.getData().copy() * 100.0
-    clear_color = [0,0,0,0.0]
+    
     palettelq = cm.autumn_r
     i = np.where(lqdat < 2.0)
     lqdat[i] = 0

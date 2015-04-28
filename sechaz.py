@@ -7,6 +7,8 @@ import sys
 import warnings
 import argparse
 import glob
+import urllib2
+import tempfile
 
 #turn off all warnings...
 warnings.filterwarnings('ignore')
@@ -60,7 +62,30 @@ def getColorMaps(configfile):
                         colormaps[modelname] = mdict
         
     return colormaps                
-                
+
+def getGridURL(gridurl):
+    gridfile = None
+    try:
+        fh = urllib2.urlopen(gridurl)
+        data = fh.read()
+        fd,gridfile = tempfile.mkstemp()
+        os.close(fd)
+        f = open(gridfile,'wt')
+        f.write(data)
+        f.close()
+        fh.close()
+    except:
+        raise IOError,'Could not retrieve data from %s' % gridurl
+    return gridfile
+
+def isURL(gridurl):
+    isURL = False
+    try:
+        fh = urllib2.urlopen(gridurl)
+        isURL = True
+    except:
+        pass
+    return isURL
 
 def main(args):
     #define location for config file
@@ -68,6 +93,13 @@ def main(args):
     configfile = args.configFile
     
     shakefile = args.shakefile
+
+    if not os.path.isfile(shakefile):
+        if isURL(shakefile):
+            shakefile = getGridURL(shakefile) #returns a file object
+        else:
+            print 'Could not find "%s" as a file or a url.  Returning.' % (shakefile)
+    
     shakemap = ShakeGrid(shakefile)
     shakeheader = shakemap.getAttributes()
     edict = {'mag':shakeheader['event']['magnitude'],
@@ -188,7 +220,7 @@ if __name__ == '__main__':
     Output is a pdf map with liquefaction/landslide results layered on topography."""
     parser = argparse.ArgumentParser(description=usage,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("shakefile", metavar='GRIDFILE',nargs='?',
-                        help='ShakeMap grid.xml file')
+                        help='ShakeMap grid.xml file (or url of same)')
     parser.add_argument('-c','--config', dest='configFile', 
                         default=DEFAULT_CONFIG,
                         help='Use a custom config file')
