@@ -22,7 +22,9 @@ import model
 ALPHA = 0.7
 AZDEFAULT=90
 ALTDEFAULT=20
-ROADCOLOR = '#00FF00'
+
+ROADCOLOR = '#6E6E6E'
+COUNTRYCOLOR = '#177F10'
 
 SEA_LEVEL = 0
 
@@ -104,6 +106,10 @@ def getMapLines(dmin,dmax):
         darray = darray[0:-1]
     return darray
 
+#here we are always using 2 decimal places because it makes it easier to 
+#place the meridian/parallel labels in a consistent spot
+#earlier versions of the code the strings had variable precision
+#but were outside the map, so positioning didn't matter.
 def latstr(parallel):
     if parallel < 0:
         parstr = '%.2f' % (-1*parallel) + '$\degree$ S'
@@ -112,6 +118,7 @@ def latstr(parallel):
     return parstr
 
 def lonstr(meridian):
+    
     if meridian < 0:
         merstr = '%.2f' % (-1*meridian) + '$\degree$ W'
     else:
@@ -138,28 +145,6 @@ def getMapTicks(m,xmin,xmax,ymin,ymax):
         yticks.append(y)
     
     return (xticks,xlabels,yticks,ylabels)
-
-def plotRoads(m,roadshapes):
-    xmin = m.llcrnrlon
-    xmax = m.urcrnrlon
-    ymin = m.llcrnrlat
-    ymax = m.urcrnrlat
-    box = Polygon([(xmin,ymin),(xmax,ymin),(xmax,ymax),(xmin,ymax)])
-    shapes = fiona.open(roadfile,'r')
-    roadshapes = shapes.items(bbox=(xmin,ymin,xmax,ymax))
-    for shapeid,rshape in roadshapes:
-        # rxmin,rymin,rxmax,rymax = rshape.bounds
-        # rbox = Polygon([(rxmin,rymin),(rxmax,rymin),(rxmax,rymax),(rxmin,rymax)])
-        # if not rbox.intersects(box):
-        #     continue
-        road = shape(rshape['geometry'])
-        shapeint = box.intersection(road)
-        if isinstance(shapeint,LineString):
-            xy = list(shapeint.coords)
-            lon,lat = zip(*xy)
-            x,y = m(lon,lat)
-            m.plot(x,y,ROADCOLOR)
-    shapes.close()
 
 def renderPanel(logmodel,colormaps,outfolder,edict):
     nparray = "<type 'numpy.ndarray'>"
@@ -237,7 +222,7 @@ def renderLayer(layername,layergrid,outfolder,edict,fig,ax,model,colormaps):
 
     plt.title('%s' % (layername))
     
-def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadslist=None,roadcolor=None):
+def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadslist=[],colors={}):
     # create the figure and axes instances.
     fig = plt.figure()
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
@@ -252,14 +237,15 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
                 lat_1=clat,lon_0=clon,ax=ax)
 
     clear_color = [0,0,0,0.0]
-                
+
+    topoextent = getGridExtent(topogrid,m)
     rgb,topopalette = getTopoRGB(topogrid)
     topogrid2 = GMTGrid()
     topogrid2.loadFromGrid(topogrid)
     topogrid2.interpolateToGrid(lqgrid.geodict)
     
     iwater = np.where(topogrid2.griddata == SEA_LEVEL) 
-    im = m.imshow(rgb,cmap=topopalette)
+    im = m.imshow(rgb,cmap=topopalette,extent=topoextent)
 
     #figure out the aspect ratio of the axes
     print 'Map width: %s' % commify(int(m.xmax-m.xmin))
@@ -291,8 +277,6 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
         tick.label2.set_verticalalignment('top')
     [i.set_color("white") for i in plt.gca().get_xticklabels()]
     [i.set_color("white") for i in plt.gca().get_yticklabels()]
-    #ax.axis[:].invert_ticklabel_direction()
-    
     
     #render liquefaction
     lqdat = lqgrid.getData().copy() * 100.0
@@ -305,8 +289,6 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     palettelq.set_bad(clear_color,alpha=0.0)
     extent = getGridExtent(lqgrid,m)
     lqprobhandle = m.imshow(lqdatm,cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
-    # ax2 = fig.add_axes([0.85,0.1,0.05,1.0])
-    # plt.sca(ax2)
     cbarlq = m.colorbar(mappable=lqprobhandle)
     cbarlq.set_ticks([2.0,11.0,19.0])
     cbarlq.set_ticklabels(['Low','Medium','High'])# vertically oriented colorbar
@@ -336,13 +318,14 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     cbarls.set_ticklabels(['Low','Medium','High'])# vertically oriented colorbar
 
     #draw roads on the map, if they were provided to us
-    #roadfile = None
-    if roadslist is not None:
-        for road in roadslist:
-            xy = list(road['geometry']['coordinates'])
-            roadx,roady = zip(*xy)
-            mapx,mapy = m(roadx,roady)
-            m.plot(mapx,mapy,roadcolor)
+    roadcolor = ROADCOLOR
+    if colors.has_key('roadcolor'):
+        roadcolor = '#'+colors['roadcolor']
+    for road in roadslist:
+        xy = list(road['geometry']['coordinates'])
+        roadx,roady = zip(*xy)
+        mapx,mapy = m(roadx,roady)
+        m.plot(mapx,mapy,roadcolor)
     
     #draw titles
     cbartitle_ls = 'Landslide\nProbability'
@@ -371,6 +354,15 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     elat,elon = eventdict['epicenter']
     ex,ey = m(elon,elat)
     plt.plot(ex,ey,'*',markeredgecolor='k',mfc='None',mew=1.5,ms=24)
+
+    #fill in the lakes
+    m.fillcontinents(color=clear_color,lake_color=water_color)
+
+    #draw country boundaries
+    countrycolor = COUNTRYCOLOR
+    if colors.has_key('countrycolor'):
+        countrycolor = '#'+colors['countrycolor']
+    m.drawcountries(color=countrycolor,linewidth=2.0)
     
     #draw scenario watermark, if scenario
     if isScenario:

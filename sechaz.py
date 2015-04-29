@@ -123,12 +123,15 @@ def main(args):
     slopegrid = GMTGrid(slopefile,bounds=shakemap.getRange())
     slopeout = os.path.join(outfolder,'slope.grd')
 
+    
+    #get all of the colors that people want
+    colors = {}
+    for option in config.options('MAPDATA'):
+        if option.endswith('color'):
+            colors[option] = config.get('MAPDATA',option)
+
     #if they have roads configured, go find the appropriate roads segments
     hasRoads = config.has_option('MAPDATA','roadfolder')
-    if config.has_option('MAPDATA','roadcolor'):
-        roadcolor = '#'+config.get('MAPDATA','roadcolor')
-    else:
-        roadcolor = ROADCOLOR
     roadslist = []
     if hasRoads and args.roads:
         roadroot = config.get('MAPDATA','roadfolder')
@@ -213,7 +216,7 @@ def main(args):
     timestr = shakeheader['event']['event_timestamp'].strftime('%b %d %Y')
     location = shakeheader['event']['event_description']
     makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,
-                isScenario=isScenario,roadslist=roadslist,roadcolor=roadcolor)
+                isScenario=isScenario,roadslist=roadslist,colors=colors)
 
 if __name__ == '__main__':
     usage = """Run the landslide and liquefaction models defined by coefficients found in a config.ini file.
