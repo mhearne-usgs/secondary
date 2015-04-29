@@ -372,8 +372,11 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     
     #plt.title(ptitle,axes=ax)
     outfile = os.path.join(outfolder,'%s.pdf' % eventdict['eventid'])
+    pngfile = os.path.join(outfolder,'%s.png' % eventdict['eventid'])
     plt.savefig(outfile)
+    plt.savefig(pngfile)
     print 'Saving map output to %s' % outfile
+    print 'Saving map output to %s' % pngfile
 
 if __name__ == '__main__':
     pass
