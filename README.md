@@ -188,6 +188,7 @@ slopemax = 5.0
 #optional layers
 roadfolder = /Users/mhearne/secondary/data/roads
 roadcolor = 00FF00
+countrycolor = 177F10
 </pre>
 
 Running SecHaz
