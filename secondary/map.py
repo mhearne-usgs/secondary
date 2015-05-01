@@ -219,6 +219,7 @@ def renderLayer(layername,layergrid,outfolder,edict,fig,ax,model,colormaps):
         tick.label2.set_verticalalignment('top')
     [i.set_color("white") for i in plt.gca().get_xticklabels()]
     [i.set_color("white") for i in plt.gca().get_yticklabels()]
+    
 
     plt.title('%s' % (layername))
     
@@ -267,13 +268,13 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     xticks,xlabels,yticks,ylabels = getMapTicks(m,xmin,xmax,ymin,ymax)
     plt.sca(ax)
     plt.tick_params(axis='both',direction='in',right='on',colors='white')
-    plt.xticks(xticks,xlabels,size=6)
-    plt.yticks(yticks,ylabels,size=6)
+    plt.xticks(xticks,xlabels,size=8)
+    plt.yticks(yticks,ylabels,size=8)
     for tick in ax.axes.yaxis.get_major_ticks():
-        tick.set_pad(-33)
+        tick.set_pad(-38)
         tick.label2.set_horizontalalignment('right')
     for tick in ax.axes.xaxis.get_major_ticks():
-        tick.set_pad(-10)
+        tick.set_pad(-15)
         tick.label2.set_verticalalignment('top')
     [i.set_color("white") for i in plt.gca().get_xticklabels()]
     [i.set_color("white") for i in plt.gca().get_yticklabels()]
@@ -355,8 +356,9 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     ex,ey = m(elon,elat)
     plt.plot(ex,ey,'*',markeredgecolor='k',mfc='None',mew=1.5,ms=24)
 
-    #fill in the lakes
+    #fill in the lakes and rivers
     m.fillcontinents(color=clear_color,lake_color=water_color)
+    m.drawrivers(color=water_color)
 
     #draw country boundaries
     countrycolor = COUNTRYCOLOR
