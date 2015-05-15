@@ -7,5 +7,5 @@ setup(name='secondary',
       author_email='mhearne@usgs.gov',
       url='',
       packages=['secondary'],
-      scripts = ['sechaz.py'],
+      scripts = ['sechaz.py','autosec.py'],
 )
