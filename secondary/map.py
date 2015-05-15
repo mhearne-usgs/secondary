@@ -290,7 +290,10 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     palettelq.set_bad(clear_color,alpha=0.0)
     extent = getGridExtent(lqgrid,m)
     lqprobhandle = m.imshow(lqdatm,cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
-    cbarlq = m.colorbar(mappable=lqprobhandle)
+    norm = mpl.colors.Normalize(vmin=2.0,vmax=20.0)
+    cbarlq = m.colorbar(mappable=lqprobhandle,norm=norm,cmap=palettelq)
+    # cbarlq.solids.set_edgecolor("face")
+    # plt.draw()
     cbarlq.set_ticks([2.0,11.0,19.0])
     cbarlq.set_ticklabels(['Low','Medium','High'])# vertically oriented colorbar
 
@@ -345,7 +348,7 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
         title = eventdict['loc']
     else:
         timestr = eventdict['time'].strftime('%b %d %Y')
-        title = 'M%.1f %s\n %s' % (eventdict['mag'],timestr,eventdict['loc'])
+        title = 'M%.1f %s v%i\n %s' % (eventdict['mag'],timestr,eventdict['version'],eventdict['loc'])
 
     #draw the title on the plot
     ax.set_title(title)

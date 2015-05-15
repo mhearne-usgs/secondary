@@ -106,6 +106,7 @@ def main(args):
              'time':shakeheader['event']['event_timestamp'],
              'loc':shakeheader['event']['event_description'],
              'epicenter':(shakeheader['event']['lat'],shakeheader['event']['lon']),
+             'version':int(shakeheader['shakemap_grid']['shakemap_version']),
              'eventid':shakeheader['shakemap_grid']['event_id']}
     config = ConfigParser.RawConfigParser()
     config.read(configfile)
@@ -213,10 +214,16 @@ def main(args):
     isScenario = shakeheader['shakemap_grid']['shakemap_event_type'].lower() == 'scenario'
     if args.noscenario:
         isScenario = False
-    timestr = shakeheader['event']['event_timestamp'].strftime('%b %d %Y')
+    timestr = renderDate(shakeheader['event']['event_timestamp'])
     location = shakeheader['event']['event_description']
     makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,
                 isScenario=isScenario,roadslist=roadslist,colors=colors)
+
+def renderDate(dtime):
+    months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    month = months[dtime.month - 1]
+    timestr = '%s %i %i' % (month,dtime.day,dtime.year)
+    return timestr
 
 if __name__ == '__main__':
     usage = """Run the landslide and liquefaction models defined by coefficients found in a config.ini file.

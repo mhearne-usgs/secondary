@@ -96,9 +96,21 @@ http://sedac.ciesin.columbia.edu/data/set/groads-global-roads-open-access-v1/dat
 Download all of the regional *shapefile* road data sets into a common data directory, and unzip them in place.
 The *roadfolder* configuration option should point to that common data directory.
 
+Automation
+==========
+
+An automation program is included with this distribution - autosec.py.
+
+This program, when run (manually or at intervals by something like cron),
+will search the NEIC one hour earthquake data feed (http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_hour.geojson) for new ShakeMaps for events
+matching magnitude, mmi, or PAGER impact level criteria in a config file (see below).
+
+When an event matching one or more of those thresholds is found, autosec.py will run sechaz.py and then 
+email the PNG and PDF probability map to a configured list of email recipients.
+
 Configuring SecHaz
 ==================
-The liquefaction and landslide models are defined in the configuration file, which must be
+The liquefaction and landslide models are defined in a configuration file, which must be
 located in the user's home folder in a sub-folder called ".secondary".  The file must be named
 "config.ini".  As an example, for a user called "frogers" would need to have a file called:
 
@@ -189,6 +201,24 @@ slopemax = 5.0
 roadfolder = /Users/mhearne/secondary/data/roads
 roadcolor = 00FF00
 countrycolor = 177F10
+</pre>
+
+Configuring AutoSec
+===================
+
+autosec.py looks for a file in the ~/.secondary folder called mailconfig.ini.  That file should 
+look something like this:
+
+<pre>
+[THRESHOLDS]
+eis = yellow
+mag = 7.5
+mmi = 7
+
+[MAIL]
+server = yourmailserver.yourorganization.org
+sender = genericaddress@yourorganization.org
+recipients = user1@yourorganization.org,user2@yourorganization.org,
 </pre>
 
 Running SecHaz
