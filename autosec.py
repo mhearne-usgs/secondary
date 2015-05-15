@@ -171,6 +171,7 @@ def connect():
     return (db,cursor)
 
 def main():
+    print '%s - Running autosec' % datetime.now()
     thisdir = os.path.dirname(os.path.abspath(__file__)) #where is this script?
     configfile = os.path.join(os.path.expanduser('~'),'.secondary',CONFIGFILE)
     config = ConfigParser.ConfigParser()
