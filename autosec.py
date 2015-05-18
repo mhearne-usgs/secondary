@@ -74,6 +74,7 @@ def mailUsers(pdf,png,event,config):
         pdfmsg = MIMEBase('application/pdf', None)
         pdfmsg.set_payload(fp.read())
         fp.close()
+        pdfmsg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(pdf))
         #Encode the payload using Base64
         encoders.encode_base64(pdfmsg)
         
