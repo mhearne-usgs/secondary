@@ -32,7 +32,7 @@ tablecols  = [('id','integer primary key'),
               ('depth','real'),
               ('time','timestamp'),
               ('mag','real'),
-              ('alert','atext'),
+              ('alert','text'),
               ('maxmmi','real'),
               ('location','text')]
 TABLES = {'shakemap':OrderedDict(tablecols)}
