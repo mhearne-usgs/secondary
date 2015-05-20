@@ -23,6 +23,7 @@ from secondary.shape import getRoadFile
 #third party imports
 from matplotlib import cm
 import fiona
+import numpy as np
 
 CONFIGFILE = 'config.ini'
 AZIMUTH_DEFAULT = 90
@@ -88,6 +89,9 @@ def isURL(gridurl):
     return isURL
 
 def main(args):
+    
+    
+    
     #define location for config file
     homedir = os.path.expanduser("~") #where is the user's home directory?
     configfile = args.configFile
@@ -101,6 +105,17 @@ def main(args):
             print 'Could not find "%s" as a file or a url.  Returning.' % (shakefile)
     
     shakemap = ShakeGrid(shakefile)
+    #figure out the bounds that are greater than the biggest bounds
+    #of any of the grids
+    shakerange = shakemap.getRange()
+    lonrange = shakerange[1] - shakerange[0]
+    latrange = shakerange[3] - shakerange[2]
+    xmin = shakerange[0] - lonrange*0.1
+    xmax = shakerange[1] + lonrange*0.1
+    ymin = shakerange[2] - latrange*0.1
+    ymax = shakerange[3] + latrange*0.1
+    bigbounds = (xmin,xmax,ymin,ymax)
+    #
     shakeheader = shakemap.getAttributes()
     edict = {'mag':shakeheader['event']['magnitude'],
              'time':shakeheader['event']['event_timestamp'],
@@ -199,11 +214,12 @@ def main(args):
         #     renderLayer(layergrid,layername,outfolder,edict,model,colormaps)
 
     topofile = config.get('MAPDATA','topo')
-    bigbounds = shakemap.getRange()
+    #bigbounds = shakemap.getRange()
     xdim = shakemap.geodict['xdim']
     ydim = shakemap.geodict['xdim']
-    bigbounds = (bigbounds[0]-xdim*2,bigbounds[1]+xdim*2,bigbounds[2]-ydim*2,bigbounds[3]+ydim*2)
+    #bigbounds = (bigbounds[0]-xdim*4,bigbounds[1]+xdim*4,bigbounds[2]-ydim*4,bigbounds[3]+ydim*4)
     topogrid = GMTGrid(topofile,bounds=bigbounds)
+    topogrid = adjustTopoGrid(topogrid,bigbounds) #make this grid as big as bigbounds if we hit an upper or lower bound
     topoout = os.path.join(outfolder,'topography.grd')
     print 'Saving topography to %s' % topoout
     topogrid.save(topoout)
@@ -218,6 +234,30 @@ def main(args):
     location = shakeheader['event']['event_description']
     makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,
                 isScenario=isScenario,roadslist=roadslist,colors=colors)
+
+def adjustTopoGrid(topogrid,bigbounds):
+    xdim = topogrid.geodict['xdim']
+    ydim = topogrid.geodict['ydim']
+    nrows,ncols = topogrid.griddata.shape
+    xmin,xmax,ymin,ymax = topogrid.getRange()
+    bxmin,bxmax,bymin,bymax = bigbounds
+    if bymin <= ymin:
+        nrows_bottom = int(np.ceil((ymin - bymin)/ydim))
+        newymin = ymin - nrows_bottom*ydim
+        bottom = np.ones((nrows_bottom,ncols))*np.nan
+        topogrid.griddata = np.append(topogrid.griddata,bottom,axis=0)
+        topogrid.geodict['ymin'] = newymin
+    if ymax >= bymax:
+        nrows_top = int(np.ceil((bymax - ymax)/ydim))
+        newymax = ymax + nrows_top*ydim
+        top = np.ones((nrows_top,ncols))*np.nan
+        topogrid.griddata = np.append(top,topogrid.griddata,axis=0)
+        topogrid.geodict['ymax'] = newymax
+    
+    newrows,newcols = topogrid.griddata.shape 
+    topogrid.geodict['nrows'] = newrows
+    return topogrid
+        
 
 def renderDate(dtime):
     months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']

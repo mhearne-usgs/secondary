@@ -32,6 +32,8 @@ tablecols  = [('id','integer primary key'),
               ('depth','real'),
               ('time','timestamp'),
               ('mag','real'),
+              ('alert','atext'),
+              ('maxmmi','real'),
               ('location','text')]
 TABLES = {'shakemap':OrderedDict(tablecols)}
 DBFILE = 'mail.db'
@@ -100,7 +102,7 @@ def runSecondary(url,thisdir):
                 png = tfile
     return (pdf,png)
 
-def getShakeMapInfo(shakemap):
+def getProductInfo(shakemap,pager):
     edict = {}
     edict['eventcode'] = shakemap['code']
     edict['version'] = int(shakemap['properties']['version'])
@@ -111,6 +113,8 @@ def getShakeMapInfo(shakemap):
     edict['mag'] = float(shakemap['properties']['magnitude'])
     edict['location'] = shakemap['properties']['event-description']
     edict['url'] = shakemap['contents']['download/grid.xml']['url']
+    edict['alert'] = pager['properties']['alertlevel']
+    edict['maxmmi'] = pager['properties']['maxmmi']
     return edict
 
 def getRecentEvents(thresholds):
@@ -145,7 +149,7 @@ def getRecentEvents(thresholds):
         if thresholds.has_key('eis') and palert >= ALERTLEVELS.index(thresholds['eis']):
             getShake = True
         if getShake:
-            edict = getShakeMapInfo(shakemap)
+            edict = getProductInfo(shakemap,pager)
             edict['time'] = datetime.utcfromtimestamp(event['properties']['time']/1000)
             eventlist.append(edict.copy())
     return eventlist
@@ -199,7 +203,7 @@ def main():
             #this event has not been processed before
             pdf,png = runSecondary(event['url'],thisdir)
             mailUsers(pdf,png,event,config)
-            fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,location) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s")'
+            fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s")'
             eid = event['eventcode']
             enum = event['version']
             elat = event['lat']
@@ -207,8 +211,10 @@ def main():
             edepth = event['depth']
             etime = event['time']
             emag = event['mag']
+            alert = event['alert']
+            maxmmi = event['maxmmi']
             eloc = event['location']
-            insertquery = fmt % (eid,enum,elat,elon,edepth,str(etime),emag,eloc)
+            insertquery = fmt % (eid,enum,elat,elon,edepth,str(etime),emag,alert,maxmmi,eloc)
             cursor.execute(insertquery)
             db.commit()
 
