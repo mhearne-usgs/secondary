@@ -114,7 +114,7 @@ def getProductInfo(shakemap,pager):
     edict['location'] = shakemap['properties']['event-description']
     edict['url'] = shakemap['contents']['download/grid.xml']['url']
     edict['alert'] = pager['properties']['alertlevel']
-    edict['maxmmi'] = pager['properties']['maxmmi']
+    edict['maxmmi'] = float(pager['properties']['maxmmi'])
     return edict
 
 def getRecentEvents(thresholds):
