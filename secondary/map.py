@@ -36,7 +36,10 @@ def getGridExtent(grid,basemap):
     return extent
 
 def getTopoRGB(topogrid):
-    topodat = topogrid.getData().copy()
+    topotmp = topogrid.getData().copy()
+    #make a masked array
+    topotmp = np.ma.array(topotmp)
+    topodat = np.ma.masked_where(np.isnan(topotmp),topotmp)
     cy = topogrid.geodict['ymin'] + (topogrid.geodict['ymax'] - topogrid.geodict['ymin'])/2.0
     #flag the regions where topography is less than 0 (we'll color this ocean later)
     i = np.where(topodat == SEA_LEVEL)
