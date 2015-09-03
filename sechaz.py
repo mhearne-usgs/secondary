@@ -203,8 +203,8 @@ def main(args):
         probdict[model] = probgrid
         probfile = os.path.join(outfolder,'%s.grd' % model)
         print 'Saving %s model output to %s' % (model,probfile)
-        #probgrid.save(probfile)
-        #renderPanel(lm,colormaps,outfolder,edict)
+        probgrid.save(probfile)
+        renderPanel(lm,colormaps,outfolder,edict)
         # for layername,layergrid in lm.layerdict.iteritems():
         #     layerfile = os.path.join(outfolder,layername+'.grd')
         #     print 'Saving input grid %s to %s...' % (layername,layerfile)
@@ -220,10 +220,10 @@ def main(args):
     topogrid = adjustTopoGrid(topogrid,bigbounds) #make this grid as big as bigbounds if we hit an upper or lower bound
     topoout = os.path.join(outfolder,'topography.grd')
     print 'Saving topography to %s' % topoout
-    #topogrid.save(topoout)
+    topogrid.save(topoout)
     
     print 'Saving slope to %s' % slopeout
-    #slopegrid.save(slopeout)
+    slopegrid.save(slopeout)
 
     isScenario = shakeheader['shakemap_grid']['shakemap_event_type'].lower() == 'scenario'
     if args.noscenario:
