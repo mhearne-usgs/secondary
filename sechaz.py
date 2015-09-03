@@ -89,9 +89,6 @@ def isURL(gridurl):
     return isURL
 
 def main(args):
-    
-    
-    
     #define location for config file
     homedir = os.path.expanduser("~") #where is the user's home directory?
     configfile = args.configFile
@@ -139,6 +136,7 @@ def main(args):
     slopegrid = GMTGrid(slopefile,bounds=shakemap.getRange())
     slopeout = os.path.join(outfolder,'slope.grd')
 
+    cityfile = config.get('MAPDATA','cityfile')
     
     #get all of the colors that people want
     colors = {}
@@ -205,8 +203,8 @@ def main(args):
         probdict[model] = probgrid
         probfile = os.path.join(outfolder,'%s.grd' % model)
         print 'Saving %s model output to %s' % (model,probfile)
-        probgrid.save(probfile)
-        renderPanel(lm,colormaps,outfolder,edict)
+        #probgrid.save(probfile)
+        #renderPanel(lm,colormaps,outfolder,edict)
         # for layername,layergrid in lm.layerdict.iteritems():
         #     layerfile = os.path.join(outfolder,layername+'.grd')
         #     print 'Saving input grid %s to %s...' % (layername,layerfile)
@@ -222,18 +220,19 @@ def main(args):
     topogrid = adjustTopoGrid(topogrid,bigbounds) #make this grid as big as bigbounds if we hit an upper or lower bound
     topoout = os.path.join(outfolder,'topography.grd')
     print 'Saving topography to %s' % topoout
-    topogrid.save(topoout)
+    #topogrid.save(topoout)
     
     print 'Saving slope to %s' % slopeout
-    slopegrid.save(slopeout)
+    #slopegrid.save(slopeout)
 
     isScenario = shakeheader['shakemap_grid']['shakemap_event_type'].lower() == 'scenario'
     if args.noscenario:
         isScenario = False
     timestr = renderDate(shakeheader['event']['event_timestamp'])
     location = shakeheader['event']['event_description']
-    makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,
-                isScenario=isScenario,roadslist=roadslist,colors=colors)
+    #hillshfile = config.get('MAPDATA','hillshadefile')
+    #hillshgrid = GMTGrid(hillshfile,bounds=bigbounds)
+    makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,isScenario=isScenario,roadslist=roadslist,colors=colors,cityfile=cityfile)
 
 def adjustTopoGrid(topogrid,bigbounds):
     xdim = topogrid.geodict['xdim']

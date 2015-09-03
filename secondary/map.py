@@ -18,6 +18,7 @@ from shapely.geometry import shape,Polygon,LineString
 from neicio.gmt import GMTGrid
 from neicutil.text import ceilToNearest,floorToNearest,roundToNearest,commify
 import model
+from neicmap.city import PagerCity
 
 ALPHA = 0.7
 AZDEFAULT=90
@@ -84,6 +85,25 @@ def getTopoRGB(topogrid):
     rgb = np.flipud(rgb)
 
     return (rgb,palette1)
+
+
+def hillshade(topogrid, azimuth, angle_altitude):
+    """
+    Most of this script borrowed from http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html last accessed 9/2/2015
+    """
+    topotmp = topogrid.getData().copy()
+    #make a masked array
+    topotmp = np.ma.array(topotmp)
+    topodat = np.ma.masked_where(np.isnan(topotmp), topotmp)
+    topodat = np.ma.masked_where(topodat == SEA_LEVEL, topodat)
+    x, y = np.gradient(topodat)
+    slope = np.pi/2. - np.arctan(np.sqrt(x*x + y*y))
+    aspect = np.arctan2(-x, y)
+    azimuthrad = azimuth*np.pi / 180.
+    altituderad = angle_altitude*np.pi / 180.
+    shaded = np.sin(altituderad) * np.sin(slope) + np.cos(altituderad) * np.cos(slope) * np.cos(azimuthrad - aspect)
+    return 255*(shaded + 1)/2
+
 
 def getMapLines(dmin,dmax):
     NLINES = 4
@@ -196,14 +216,22 @@ def renderLayer(layername,layergrid,outfolder,edict,fig,ax,model,colormaps):
 
     #render layer
     lsdat = layergrid.getData()
-    extent = getGridExtent(layergrid,m)
+    #extent = getGridExtent(layergrid,m)
     cmap = 'jet'
     if colormaps.has_key(model):
         mdict = colormaps[model]
         if mdict.has_key(layername):
             cmap = mdict[layername]
-    lsprobhandle = plt.imshow(lsdat,origin='upper',extent=extent,cmap=cm.get_cmap(cmap))
-    plt.colorbar()
+    lons = np.arange(xmin,xmax,layergrid.getGeoDict()['xdim'])
+    lons = lons[:layergrid.getGeoDict()['ncols']] #make sure it's the right length, sometimes it is one too long, sometimes it isn't because of GMTGrid issue
+    lats = np.arange(ymax, ymin, -layergrid.getGeoDict()['ydim']) #backwards so it plots right side up
+    lats = lats[:layergrid.getGeoDict()['nrows']] #make sure it's the right length
+    #make meshgrid
+    llons, llats = np.meshgrid(lons, lats)
+    x, y = m(llons, llats)  #get projection coordinates
+    lsprobhandle = m.pcolormesh(x, y, lsdat, lw=0, cmap=cm.get_cmap(cmap))
+    #lsprobhandle = plt.imshow(lsdat,origin='upper',extent=extent,cmap=cm.get_cmap(cmap))
+    plt.colorbar(lsprobhandle)
     
     #this business apparently has to happen after something has been 
     #rendered on the map, which I guess makes sense.
@@ -222,11 +250,9 @@ def renderLayer(layername,layergrid,outfolder,edict,fig,ax,model,colormaps):
         tick.label2.set_verticalalignment('top')
     [i.set_color("white") for i in plt.gca().get_xticklabels()]
     [i.set_color("white") for i in plt.gca().get_yticklabels()]
-    
-
     plt.title('%s' % (layername))
     
-def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadslist=[],colors={}):
+def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=False,roadslist=[],colors={},cityfile=None):
     # create the figure and axes instances.
     fig = plt.figure()
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
@@ -237,19 +263,31 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     clon = xmin + (xmax-xmin)/2.0
     m = Basemap(llcrnrlon=xmin,llcrnrlat=ymin,urcrnrlon=xmax,urcrnrlat=ymax,\
                 rsphere=(6378137.00,6356752.3142),\
-                resolution='l',area_thresh=1000.,projection='lcc',\
+                resolution='h',area_thresh=1000.,projection='lcc',\
                 lat_1=clat,lon_0=clon,ax=ax)
 
     clear_color = [0,0,0,0.0]
+    
+    #topoextent = getGridExtent(topogrid,m)
+    #rgb,topopalette = getTopoRGB(topogrid)
+    #color_tuple = rgb.transpose((1,0,2)).reshape((rgb.shape[0]*rgb.shape[1],rgb.shape[2]))/255.0
 
-    topoextent = getGridExtent(topogrid,m)
-    rgb,topopalette = getTopoRGB(topogrid)
+    hillsh = hillshade(topogrid, 315, 50) # divide by 2 to mute colors
     topogrid2 = GMTGrid()
     topogrid2.loadFromGrid(topogrid)
     topogrid2.interpolateToGrid(lqgrid.geodict)
-    
-    iwater = np.where(topogrid2.griddata == SEA_LEVEL) 
-    im = m.imshow(rgb,cmap=topopalette,extent=topoextent)
+    #define what cells are below sea level
+    iwater = np.where(topogrid2.griddata == SEA_LEVEL)
+
+    lons = np.arange(xmin,xmax,topogrid.getGeoDict()['xdim'])
+    lons = lons[:topogrid.getGeoDict()['ncols']] #make sure right length
+    lats = np.arange(ymax, ymin, -topogrid.getGeoDict()['ydim'])[:-1] #backwards so it plots right side up
+    #make meshgrid
+    lats = lats[:topogrid.getGeoDict()['nrows']]
+    llons, llats = np.meshgrid(lons, lats)
+    x, y = m(llons, llats)  #get projection coordinates
+    im = m.pcolormesh(x, y, hillsh, cmap='Greys', lw=0, vmin=0.0, vmax=550.)
+    #im = m.imshow(rgb,cmap=topopalette,extent=topoextent)
 
     #figure out the aspect ratio of the axes
     print 'Map width: %s' % commify(int(m.xmax-m.xmin))
@@ -291,8 +329,18 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     lqdat[iwater] = 0
     lqdatm = np.ma.masked_equal(lqdat, 0)
     palettelq.set_bad(clear_color,alpha=0.0)
-    extent = getGridExtent(lqgrid,m)
-    lqprobhandle = m.imshow(lqdatm,cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
+
+    xmin, xmax, ymin, ymax = lqgrid.getRange()
+    lons = np.arange(xmin,xmax,lqgrid.getGeoDict()['xdim'])
+    lons = lons[:lqgrid.getGeoDict()['ncols']] #make sure it's the right length, sometimes it is one too long, sometimes it isn't because of GMTGrid issue
+    lats = np.arange(ymax, ymin, -lqgrid.getGeoDict()['ydim']) #backwards so it plots right side up
+    lats = lats[:lqgrid.getGeoDict()['nrows']] #make sure it's the right length, sometimes it is one too long, sometimes it isn't because of GMTGrid issue
+    #make meshgrid
+    llons, llats = np.meshgrid(lons, lats)
+    x, y = m(llons, llats)  #get projection coordinates
+    lqprobhandle = m.pcolormesh(x, y, lqdatm, lw=0, cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA)
+    #extent = getGridExtent(lqgrid,m)
+    #lqprobhandle = m.imshow(lqdatm,cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
     norm = mpl.colors.Normalize(vmin=2.0,vmax=20.0)
     cbarlq = m.colorbar(mappable=lqprobhandle,norm=norm,cmap=palettelq)
     # cbarlq.solids.set_edgecolor("face")
@@ -304,7 +352,6 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     topogrid2 = GMTGrid()
     topogrid2.loadFromGrid(topogrid)
     topogrid2.interpolateToGrid(lsgrid.geodict)
-    iwater = np.where(topogrid2.griddata < 0) 
     lsdat = lsgrid.getData().copy() * 100.0
     clear_color = [0,0,0,0.0]
     palettels = cm.cool
@@ -313,8 +360,18 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     lsdat[iwater] = 0
     lsdatm = np.ma.masked_equal(lsdat, 0)
     palettels.set_bad(clear_color,alpha=0.0)
-    extent = getGridExtent(lsgrid,m)
-    lsprobhandle = plt.imshow(lsdatm,cmap=palettels,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
+
+    xmin, xmax, ymin, ymax = lsgrid.getRange()
+    lons = np.arange(xmin, xmax, lsgrid.getGeoDict()['xdim'])
+    lons = lons[:lsgrid.getGeoDict()['ncols']] #make sure it's the right length, sometimes it is one too long, sometimes it isn't because of GMTGrid issue
+    lats = np.arange(ymax, ymin, -lsgrid.getGeoDict()['ydim']) #backwards so it plots right side up
+    #make meshgrid
+    lats = lats[:lsgrid.getGeoDict()['nrows']]
+    llons, llats = np.meshgrid(lons, lats)
+    x, y = m(llons, llats)  #get projection coordinates
+    lsprobhandle = m.pcolormesh(x, y, lsdatm, lw=0, cmap=palettels,vmin=2.0,vmax=20.0,alpha=ALPHA)
+    #extent = getGridExtent(lsgrid,m)
+    #lsprobhandle = plt.imshow(lsdatm,cmap=palettels,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
 
     #draw landslide colorbar on the left side
     axleft = fig.add_axes([leftx,0.1,0.033,0.8])
@@ -332,8 +389,29 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
         xy = list(road['geometry']['coordinates'])
         roadx,roady = zip(*xy)
         mapx,mapy = m(roadx,roady)
-        m.plot(mapx,mapy,roadcolor)
-    
+        m.plot(mapx,mapy,roadcolor,lw=1.0)
+
+    #add city names to map with population >50,000 (add option later)
+    if cityfile is not None:
+        dmin = 0.04*(m.ymax-m.ymin)
+        xyplotted = []
+        cities = PagerCity(cityfile)
+        #Find cities within bounding box
+        boundcity = cities.findCitiesByRectangle(bounds=(xmin,xmax,ymin,ymax))
+        #Just keep 7 biggest cities
+        thresh = sorted([cit['pop'] for cit in boundcity])[-7]
+        plotcity = [cit for cit in boundcity if cit['pop'] >= thresh]
+        #For cities that are more than one xth of the xwidth apart, keep only the larger one
+        pass #do later
+        #Plot cities
+        for cit in plotcity: #should sort so it plots them in order of population so larger cities are preferentially plotted - do later
+            xi, yi = m(cit['lon'], cit['lat'])
+            dist = [np.sqrt((xi-x0)**2+(yi-y0)**2) for x0, y0 in xyplotted]
+            if not dist or np.min(dist) > dmin:
+                m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.')
+                ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8)
+                xyplotted.append((xi, yi))
+
     #draw titles
     cbartitle_ls = 'Landslide\nProbability'
     plt.text(-1.0,1.03,cbartitle_ls,multialignment='left',axes=ax)
@@ -344,7 +422,8 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     axwidth = 20 #where can I get this from?
 
     #draw a map boundary, fill in oceans with water
-    water_color = [.47,.60,.81]
+    #water_color = [.47,.60,.81] # too similar to a blue shade in ls colorbar
+    water_color = '#B8EEFF'
     m.drawmapboundary(fill_color=water_color)
 
     if isScenario:
@@ -370,8 +449,13 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     countrycolor = COUNTRYCOLOR
     if colors.has_key('countrycolor'):
         countrycolor = '#'+colors['countrycolor']
-    m.drawcountries(color=countrycolor,linewidth=2.0)
-    
+    m.drawcountries(color=countrycolor,linewidth=1.0)
+
+    #add map scale
+    m.drawmapscale((xmax+xmin)/2,(ymin+(ymax-ymin)/150),clon,clat,np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='fancy',yoffset=0.01)
+    #draw coastlines
+    m.drawcoastlines(color='#476C91',linewidth=0.5)
+
     #draw scenario watermark, if scenario
     if isScenario:
         plt.sca(ax)
