@@ -452,7 +452,7 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     m.drawcountries(color=countrycolor,linewidth=1.0)
 
     #add map scale
-    m.drawmapscale((xmax+xmin)/2,(ymin+(ymax-ymin)/150),clon,clat,np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='fancy',yoffset=0.01)
+    m.drawmapscale((xmax+xmin)/2,(ymin+(ymax-ymin)/150),clon,clat,np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='fancy')
     #draw coastlines
     m.drawcoastlines(color='#476C91',linewidth=0.5)
 
