@@ -89,9 +89,6 @@ def isURL(gridurl):
     return isURL
 
 def main(args):
-    
-    
-    
     #define location for config file
     homedir = os.path.expanduser("~") #where is the user's home directory?
     configfile = args.configFile
@@ -139,6 +136,7 @@ def main(args):
     slopegrid = GMTGrid(slopefile,bounds=shakemap.getRange())
     slopeout = os.path.join(outfolder,'slope.grd')
 
+    cityfile = config.get('MAPDATA','cityfile')
     
     #get all of the colors that people want
     colors = {}
@@ -232,8 +230,9 @@ def main(args):
         isScenario = False
     timestr = renderDate(shakeheader['event']['event_timestamp'])
     location = shakeheader['event']['event_description']
-    makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,
-                isScenario=isScenario,roadslist=roadslist,colors=colors)
+    #hillshfile = config.get('MAPDATA','hillshadefile')
+    #hillshgrid = GMTGrid(hillshfile,bounds=bigbounds)
+    makeDualMap(probdict['liquefaction'],probdict['landslide'],topogrid,slopegrid,edict,outfolder,isScenario=isScenario,roadslist=roadslist,colors=colors,cityfile=cityfile)
 
 def adjustTopoGrid(topogrid,bigbounds):
     xdim = topogrid.geodict['xdim']

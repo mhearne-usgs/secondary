@@ -21,6 +21,7 @@ This package depends on:
  * neicio, a Python library for reading/writing various spatial data formats (including ShakeMap grid.xml). 
  * neicmap, a Python library for doing various spatial calculations (distance, angle, etc.)
  * neicutil, a Python library which is a grab bag of interpolation routines, text manipulation functions, and time functions.
+ * shapely, a Python library for manipulation and analysis of geometric objects in the cartesian plane.
 
 The best way to install numpy,matplotlib,scipy and fiona is to use one of the Python distributions described here:
 
@@ -70,6 +71,20 @@ pip install git+git://github.com/mhearne-usgs/secondary.git
 To upgrade this package:
 
 pip install -U git+git://github.com/mhearne-usgs/secondary.git
+
+To uninstall this package:
+
+pip uninstall secondary
+
+To install shapely:
+
+If you are using anaconda (see above):
+
+conda install shapely
+
+Otherwise, see the installation instructions here:
+
+https://pypi.python.org/pypi/Shapely
 
 Data Sources
 ============
