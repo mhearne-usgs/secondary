@@ -281,10 +281,9 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
 
     lons = np.arange(xmin,xmax,topogrid.getGeoDict()['xdim'])
     lons = lons[:topogrid.getGeoDict()['ncols']] #make sure right length
-    lats = np.arange(ymax, ymin, -topogrid.getGeoDict()['ydim'])[:-1] #backwards so it plots right side up
-    #make meshgrid
+    lats = np.arange(ymax, ymin, -topogrid.getGeoDict()['ydim'])  # backwards so it plots right
     lats = lats[:topogrid.getGeoDict()['nrows']]
-    llons, llats = np.meshgrid(lons, lats)
+    llons, llats = np.meshgrid(lons, lats) #make meshgrid
     x, y = m(llons, llats)  #get projection coordinates
     im = m.pcolormesh(x, y, hillsh, cmap='Greys', lw=0, vmin=0.0, vmax=550.)
     #im = m.imshow(rgb,cmap=topopalette,extent=topoextent)
