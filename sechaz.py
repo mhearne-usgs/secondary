@@ -204,7 +204,7 @@ def main(args):
         probfile = os.path.join(outfolder,'%s.grd' % model)
         print 'Saving %s model output to %s' % (model,probfile)
         probgrid.save(probfile)
-        renderPanel(lm,colormaps,outfolder,edict)
+        #renderPanel(lm,colormaps,outfolder,edict)
         # for layername,layergrid in lm.layerdict.iteritems():
         #     layerfile = os.path.join(outfolder,layername+'.grd')
         #     print 'Saving input grid %s to %s...' % (layername,layerfile)
