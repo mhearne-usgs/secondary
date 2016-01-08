@@ -229,7 +229,7 @@ def renderLayer(layername,layergrid,outfolder,edict,fig,ax,model,colormaps):
     #make meshgrid
     llons, llats = np.meshgrid(lons, lats)
     x, y = m(llons, llats)  #get projection coordinates
-    lsprobhandle = m.pcolormesh(x, y, lsdat, lw=0, cmap=cm.get_cmap(cmap))
+    lsprobhandle = m.pcolormesh(x, y, lsdat, lw=0, cmap=cm.get_cmap(cmap),rasterized=True)
     #lsprobhandle = plt.imshow(lsdat,origin='upper',extent=extent,cmap=cm.get_cmap(cmap))
     plt.colorbar(lsprobhandle)
     
@@ -285,7 +285,7 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     lats = lats[:topogrid.getGeoDict()['nrows']]
     llons, llats = np.meshgrid(lons, lats) #make meshgrid
     x, y = m(llons, llats)  #get projection coordinates
-    im = m.pcolormesh(x, y, hillsh, cmap='Greys', lw=0, vmin=0.0, vmax=550.)
+    im = m.pcolormesh(x, y, hillsh, cmap='Greys', lw=0, vmin=0.0, vmax=550.,rasterized=True)
     #im = m.imshow(rgb,cmap=topopalette,extent=topoextent)
 
     #figure out the aspect ratio of the axes
@@ -337,11 +337,12 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     #make meshgrid
     llons, llats = np.meshgrid(lons, lats)
     x, y = m(llons, llats)  #get projection coordinates
-    lqprobhandle = m.pcolormesh(x, y, lqdatm, lw=0, cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA)
+    lqprobhandle = m.pcolormesh(x, y, lqdatm, lw=0, cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA,rasterized=True)
     #extent = getGridExtent(lqgrid,m)
     #lqprobhandle = m.imshow(lqdatm,cmap=palettelq,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
     norm = mpl.colors.Normalize(vmin=2.0,vmax=20.0)
     cbarlq = m.colorbar(mappable=lqprobhandle,norm=norm,cmap=palettelq)
+    cbarlq.solids.set_rasterized(True)
     # cbarlq.solids.set_edgecolor("face")
     # plt.draw()
     cbarlq.set_ticks([2.0,11.0,19.0])
@@ -368,7 +369,7 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     lats = lats[:lsgrid.getGeoDict()['nrows']]
     llons, llats = np.meshgrid(lons, lats)
     x, y = m(llons, llats)  #get projection coordinates
-    lsprobhandle = m.pcolormesh(x, y, lsdatm, lw=0, cmap=palettels,vmin=2.0,vmax=20.0,alpha=ALPHA)
+    lsprobhandle = m.pcolormesh(x, y, lsdatm, lw=0, cmap=palettels,vmin=2.0,vmax=20.0,alpha=ALPHA,rasterized=True)
     #extent = getGridExtent(lsgrid,m)
     #lsprobhandle = plt.imshow(lsdatm,cmap=palettels,vmin=2.0,vmax=20.0,alpha=ALPHA,origin='upper',extent=extent)
 
@@ -376,6 +377,7 @@ def makeDualMap(lqgrid,lsgrid,topogrid,slopegrid,eventdict,outfolder,isScenario=
     axleft = fig.add_axes([leftx,0.1,0.033,0.8])
     norm = mpl.colors.Normalize(vmin=2.0,vmax=20.0)
     cbarls = mpl.colorbar.ColorbarBase(axleft, cmap=palettels,norm=norm,orientation='vertical')
+    cbarls.solids.set_rasterized(True)
     cbarls.ax.yaxis.set_ticks_position('left')
     cbarls.set_ticks([2.0,11.0,19.0])
     cbarls.set_ticklabels(['Low','Medium','High'])# vertically oriented colorbar
