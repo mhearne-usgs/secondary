@@ -88,7 +88,7 @@ def mailUsers(pdf,png,event,config):
         
 def runSecondary(url,thisdir):
     cmd = os.path.join(thisdir,SECHAZ)
-    cmd += ' -r %s' % url
+    cmd += ' %s' % url
     retcode,stdout,stderr = getCommandOutput(cmd)
     pdf = None
     png = None
